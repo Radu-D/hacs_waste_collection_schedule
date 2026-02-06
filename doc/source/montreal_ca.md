@@ -1,14 +1,14 @@
-# Montreal
+# Montreal (QC) Waste Collection
 
 Waste collection schedules provided by [Info-Collecte Montréal](https://montreal.ca/info-collectes/), using official city GIS datasets.
 
-The integration automatically detects your waste collection sector from your Home Assistant location. Manual sector overrides are optional and only needed for advanced cases.
+This integration automatically detects your waste collection sector using your Home Assistant location. Manual sector overrides are optional and only needed for advanced cases or if your address is outside Montreal.
 
 ---
 
-## Configuration via configuration.yaml
+## Configuration via `configuration.yaml`
 
-### Recommended (automatic sector detection)
+### Recommended: Automatic sector detection
 
 ```yaml
 waste_collection_schedule:
@@ -16,13 +16,13 @@ waste_collection_schedule:
     - name: montreal_ca
 ```
 
-If Home Assistant already has your home location configured, nothing else is required.
+If Home Assistant already has your home location configured, nothing else is required. The integration will use your latitude and longitude to determine the correct sector for each waste stream.
 
 ---
 
-### Optional: override location
+### Optional: Override location
 
-Use this if your waste schedule should follow a different address. You can copy these coordinates from [Google Maps](https://www.google.com/maps) by right-clicking on the map and selecting the coordinates.
+Use this if your waste schedule should follow a different address. You can copy coordinates from [Google Maps](https://www.google.com/maps) by right-clicking on the map and selecting the coordinates.
 
 ```yaml
 waste_collection_schedule:
@@ -35,9 +35,9 @@ waste_collection_schedule:
 
 ---
 
-### Advanced: manual sector override
+### Advanced: Manual sector override
 
-Only use this if auto-detection fails or if you want to force a specific sector.
+Only use this if auto-detection fails or if you want to force a specific sector for any waste stream. You may override any individual stream; unspecified streams will auto-detect.
 
 ```yaml
 waste_collection_schedule:
@@ -51,46 +51,28 @@ waste_collection_schedule:
         bulky: RPP-REGIE-22
 ```
 
-You may override any individual waste stream. Unspecified streams will auto-detect.
-
 ---
 
 ## Configuration Variables
 
-* **latitude** *(float) (optional)*
-  Override latitude used for automatic sector detection
-
-* **longitude** *(float) (optional)*
-  Override longitude used for automatic sector detection
-
-* **sector** *(string) (optional)*
-  Manual waste sector override
-
-* **recycling** *(string) (optional)*
-  Manual recycling sector override
-
-* **food** *(string) (optional)*
-  Manual food/compost sector override
-
-* **green** *(string) (optional)*
-  Manual green waste sector override
-
-* **bulky** *(string) (optional)*
-  Manual bulky items sector override
+* **latitude** *(float, optional)* — Override latitude for automatic sector detection
+* **longitude** *(float, optional)* — Override longitude for automatic sector detection
+* **sector** *(string, optional)* — Manual waste sector override
+* **recycling** *(string, optional)* — Manual recycling sector override
+* **food** *(string, optional)* — Manual food sector override
+* **green** *(string, optional)* — Manual green sector override
+* **bulky** *(string, optional)* — Manual bulky sector override
+* **cache_hours** *(int, optional)* — Dataset cache lifetime in hours (default: 24, min: 1, max: 168)
 
 ---
 
 ## How sector detection works
 
-The integration downloads official Montreal GIS datasets and resolves your sector using geographic polygon lookup.
-
-No manual files or maps are required.
-
-If your coordinates fall outside Montreal, you will be prompted to provide manual sector values.
+The integration downloads official Montreal GIS datasets and resolves your sector using a geographic polygon lookup. No manual files or maps are required. If your coordinates fall outside Montreal, you will be prompted to provide manual sector values.
 
 ---
 
-## Example (French labels)
+## Example: French labels
 
 ```yaml
 waste_collection_schedule:
