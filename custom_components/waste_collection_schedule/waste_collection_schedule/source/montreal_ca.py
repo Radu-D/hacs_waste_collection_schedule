@@ -3,7 +3,8 @@ import time
 import logging
 import re
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date
+from typing import Any
 
 import requests
 from waste_collection_schedule import Collection
@@ -29,6 +30,7 @@ RESOURCE_KEYWORDS = {
     "food": "alimentaires",
     "green": "verts",
     "bulky": "encombrants",
+    "organic": "organiques",
 }
 
 ICON_MAP = {
@@ -37,57 +39,7 @@ ICON_MAP = {
     "Food": "mdi:food-apple",
     "Green": "mdi:leaf",
     "Bulky": "mdi:sofa",
-}
-
-HOW_TO_GET_ARGUMENTS_DESCRIPTION = {
-    "en": "Leave latitude/longitude empty to auto-detect sectors from Home Assistant location.",
-    "fr": "Laissez la latitude/longitude vide pour détecter automatiquement les secteurs à partir de l'emplacement de Home Assistant.",
-}
-
-PARAM_DESCRIPTIONS = {
-    "en": {
-        "latitude": "Optional latitude override",
-        "longitude": "Optional longitude override",
-        "sector": "Manual waste sector override",
-        "recycling": "Manual recycling sector override",
-        "bulky": "Manual bulky sector override",
-        "food": "Manual food sector override",
-        "green": "Manual green sector override",
-        "cache_hours": "Dataset cache lifetime expiration in hours",
-    },
-    "fr": {
-        "latitude": "Remplacement facultatif de la latitude",
-        "longitude": "Remplacement facultatif de la longitude",
-        "sector": "Remplacement manuel du secteur des déchets",
-        "recycling": "Remplacement manuel du secteur du recyclage",
-        "bulky": "Remplacement manuel du secteur des encombrants",
-        "food": "Remplacement manuel du secteur alimentaire",
-        "green": "Remplacement manuel du secteur vert",
-        "cache_hours": "Durée de vie du cache du jeu de données en heures",
-    },
-}
-
-PARAM_TRANSLATIONS = {
-    "en": {
-        "latitude": "Latitude",
-        "longitude": "Longitude",
-        "sector": "Waste sector",
-        "recycling": "Recycling sector",
-        "bulky": "Bulky sector",
-        "food": "Food sector",
-        "green": "Green sector",
-        "cache_hours": "Cache hours",
-    },
-    "fr": {
-        "latitude": "Latitude",
-        "longitude": "Longitude",
-        "sector": "Secteur des déchets",
-        "recycling": "Secteur du recyclage",
-        "bulky": "Secteur des encombrants",
-        "food": "Secteur alimentaire",
-        "green": "Secteur vert",
-        "cache_hours": "Heures de cache",
-    },
+    "Organic": "mdi:compost",
 }
 
 WEEKDAYS = {
@@ -101,49 +53,37 @@ WEEKDAYS = {
     "Sunday": 6,
 }
 
-MONTHS = {
-    "January": 1,
-    "February": 2,
-    "March": 3,
-    "April": 4,
-    "May": 5,
-    "June": 6,
-    "July": 7,
-    "August": 8,
-    "September": 9,
-    "October": 10,
-    "November": 11,
-    "December": 12,
-}
-
 DEFAULT_CACHE_HOURS = 24
 MIN_CACHE_HOURS = 1
 # 7 days should be more than enough to cover any temporary issues with the CKAN API or dataset updates
 MAX_CACHE_HOURS = 168
 
-_GEO_CACHE: dict[str, list] = {}
-_DATASET_URLS = None
+_GEO_CACHE: dict[str, list[dict[str, Any]]] = {}
+_DATASET_URLS: dict[str, str] | None = None
 
 
-def _cache_dir():
+def _cache_dir() -> Path:
+    """
+    Returns the cache directory path for waste collection schedule data.
+    Creates the directory if it does not exist.
+
+    Returns:
+        Path: Path object for the cache directory.
+    """
     base = Path.home() / ".waste_cache"
     base.mkdir(exist_ok=True)
     return base
 
 
-def _discover_datasets():
-    """Discover and cache Montreal waste collection datasets via CKAN API.
-
-    Fetches a list of available datasets from the Montreal CKAN package endpoint
-    and filters for GeoJSON resources matching predefined keywords. Caches the
-    discovered URLs globally to avoid repeated API calls.
+def _discover_datasets() -> dict[str, str]:
+    """
+    Discovers and caches Montreal waste collection datasets via CKAN API.
 
     Returns:
-        dict: Dictionary mapping resource keys to their download URLs (5 entries expected).
+        dict[str, str]: Mapping of resource keys to their GeoJSON URLs.
 
     Raises:
-        requests.exceptions.RequestException: If the HTTP request to CKAN fails.
-        Exception: If fewer than 5 datasets matching the expected keywords and format are found.
+        Exception: If fewer than 5 datasets are found.
     """
     global _DATASET_URLS
 
@@ -156,32 +96,35 @@ def _discover_datasets():
     r.raise_for_status()
     data = r.json()["result"]
 
-    urls = {}
+    urls: dict[str, str] = {}
 
-    for resource in data["resources"]:
-        name = resource["name"].lower()
+    for resource in data.get("resources", []):
+        name = str(resource.get("name", "")).lower()
+        fmt = str(resource.get("format", "")).lower()
+        url = resource.get("url")
+        if not url or fmt != "geojson":
+            continue
 
         for key, keyword in RESOURCE_KEYWORDS.items():
-            if keyword in name and resource["format"].lower() == "geojson":
-                urls[key] = resource["url"]
+            if keyword in name:
+                urls[key] = url
 
-    if len(urls) != 5:
-        raise Exception(
-            f"Expected 5 datasets, found {len(urls)}. CKAN structure may have changed."
-        )
+    if len(urls) < 5:
+        raise Exception("Could not discover Montreal datasets")
 
     _DATASET_URLS = urls
     return urls
 
 
-def _compute_bbox(polygon):
-    """Compute the bounding box of a polygon.
+def _compute_bbox(polygon: list) -> tuple[float, float, float, float]:
+    """
+    Computes the bounding box for a polygon.
 
     Args:
         polygon (list): List of rings, each a list of (longitude, latitude) tuples.
 
     Returns:
-        tuple: (min_lat, min_lon, max_lat, max_lon) bounding box coordinates.
+        tuple: (min_lat, min_lon, max_lat, max_lon)
     """
     lats, lons = [], []
     for ring in polygon:
@@ -191,33 +134,35 @@ def _compute_bbox(polygon):
     return min(lats), min(lons), max(lats), max(lons)
 
 
-def _bbox_contains(lat, lon, bbox):
-    """Check if a geographic point is inside a rectangular bounding box.
+def _bbox_contains(lat: float, lon: float, bbox: tuple[float, float, float, float]) -> bool:
+    """
+    Checks if a point is inside a bounding box.
 
     Args:
-        lat (float): Latitude of the point.
-        lon (float): Longitude of the point.
-        bbox (tuple): (min_lat, min_lon, max_lat, max_lon).
+        lat (float): Latitude.
+        lon (float): Longitude.
+        bbox (tuple): Bounding box (min_lat, min_lon, max_lat, max_lon).
 
     Returns:
-        bool: True if the point is within or on the edges of the bounding box.
+        bool: True if point is inside the bounding box.
     """
     min_lat, min_lon, max_lat, max_lon = bbox
     return min_lat <= lat <= max_lat and min_lon <= lon <= max_lon
 
 
-def _point_in_polygon(lat, lon, polygon):
-    """Determine if a point is inside a polygon using the ray casting algorithm.
+def _point_in_polygon(lat: float, lon: float, polygon: list) -> bool:
+    """
+    Determines if a point is inside a polygon using the ray casting algorithm.
 
     Args:
-        lat (float): Latitude of the point.
-        lon (float): Longitude of the point.
-        polygon (list): List of rings; first is outer boundary, others are holes. Each ring is a list of (lon, lat) tuples.
+        lat (float): Latitude.
+        lon (float): Longitude.
+        polygon (list): List of rings; first is outer boundary, others are holes.
 
     Returns:
-        bool: True if the point is inside the polygon (and outside any holes).
+        bool: True if point is inside the polygon.
     """
-    def point_in_ring(lat, lon, ring):
+    def point_in_ring(lat: float, lon: float, ring: list) -> bool:
         inside = False
         j = len(ring) - 1
         for i in range(len(ring)):
@@ -232,58 +177,71 @@ def _point_in_polygon(lat, lon, polygon):
             j = i
         return inside
 
+    if not polygon:
+        return False
+
     if not point_in_ring(lat, lon, polygon[0]):
         return False
+
     for hole in polygon[1:]:
         if point_in_ring(lat, lon, hole):
             return False
+
     return True
 
 
-def _prepare_features(features):
-    """Prepare geographic features by extracting and computing bounding boxes for polygons.
+def _prepare_features(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Prepares GeoJSON features by extracting polygons and bounding boxes.
 
     Args:
-        features (list): List of GeoJSON feature objects, each with a "geometry" key.
+        features (list): List of GeoJSON feature dicts.
 
     Returns:
-        list: Features with an added "_prepared" key containing (polygon, bounding_box) tuples.
+        list: Features with '_prepared' key containing (polygon, bbox) pairs.
     """
-    prepared = []
-    for feature in features:
-        geom = feature["geometry"]
+    prepared: list[dict[str, Any]] = []
 
-        if geom["type"] == "Polygon":
-            polys = [geom["coordinates"]]
-        elif geom["type"] == "MultiPolygon":
-            polys = geom["coordinates"]
+    for feature in features:
+        geom = feature.get("geometry") or {}
+        gtype = geom.get("type")
+
+        if gtype == "Polygon":
+            polys = [geom.get("coordinates")]
+        elif gtype == "MultiPolygon":
+            polys = geom.get("coordinates")
         else:
             continue
 
-        feature["_prepared"] = [
-            (poly, _compute_bbox(poly)) for poly in polys
-        ]
+        if not polys:
+            continue
+
+        pairs = []
+        for poly in polys:
+            if not poly:
+                continue
+            pairs.append((poly, _compute_bbox(poly)))
+
+        if not pairs:
+            continue
+
+        # precompute bbox + polygon pairs once to avoid recomputing on every lookup
+        feature["_prepared"] = pairs
         prepared.append(feature)
 
     return prepared
 
 
-def _load_geojson(url, max_age):
-    """Load and cache GeoJSON data from a URL.
-
-    Retrieves GeoJSON features from the specified URL and caches them locally.
-    If a cached version exists and is within the max_age threshold, the cached
-    version is returned. Otherwise, the data is downloaded and cached to disk.
+def _load_geojson(url: str, max_age: int) -> list[dict[str, Any]]:
+    """
+    Loads and caches GeoJSON data from a URL.
 
     Args:
-        url (str): URL of the GeoJSON file to load.
-        max_age (int): Maximum age of cached data in seconds.
+        url (str): GeoJSON URL.
+        max_age (int): Maximum cache age in seconds.
 
     Returns:
         list: Prepared GeoJSON features.
-
-    Raises:
-        requests.exceptions.HTTPError: If the HTTP request fails.
     """
     if url in _GEO_CACHE:
         return _GEO_CACHE[url]
@@ -296,92 +254,90 @@ def _load_geojson(url, max_age):
         r.raise_for_status()
         cache_path.write_bytes(r.content)
 
-    data = json.loads(cache_path.read_text())
-    prepared = _prepare_features(data["features"])
+    try:
+        data = json.loads(cache_path.read_text())
+    except Exception:
+        LOGGER.warning("Corrupted cache, redownloading %s", url)
+        cache_path.unlink(missing_ok=True)
+        return _load_geojson(url, max_age)
+
+    prepared = _prepare_features(data.get("features", []))
     _GEO_CACHE[url] = prepared
     return prepared
 
 
-def _resolve_sector(lat, lon, features):
-    """Resolve the waste collection sector for a given geographic location.
+def _resolve_sector(lat: float, lon: float, features: list[dict[str, Any]]) -> str:
+    """
+    Resolves the waste collection sector for a given location.
 
     Args:
-        lat (float): Latitude coordinate.
-        lon (float): Longitude coordinate.
-        features (list): List of features with "_prepared" and "properties" keys.
+        lat (float): Latitude.
+        lon (float): Longitude.
+        features (list): List of prepared GeoJSON features.
 
     Returns:
-        str: The sector identifier ("SECTEUR") for the location.
+        str: Sector identifier.
 
     Raises:
-        SourceArgumentException: If the location is outside Montreal and no matching sector is found.
+        SourceArgumentException: If location is outside Montreal.
     """
     for feature in features:
-        for poly, bbox in feature["_prepared"]:
+        for poly, bbox in feature.get("_prepared", []):
+            # fast bbox reject before expensive polygon math
             if not _bbox_contains(lat, lon, bbox):
                 continue
             if _point_in_polygon(lat, lon, poly):
-                return feature["properties"]["SECTEUR"]
+                props = feature.get("properties") or {}
+                sector = props.get("SECTEUR")
+                if sector:
+                    return sector
 
     raise SourceArgumentException(
         "latitude",
-        "Location is outside Montreal. Use manual sector override."
+        "Location is outside Montreal. Use manual sector override.",
     )
 
 
-def _extract_explicit_dates(message, source_type):
+def _is_delegation_message(msg: str) -> bool:
     """
-    Extract explicit waste collection dates from a message string.
-    This function searches for month names followed by day numbers in the provided
-    message and creates Collection entries for each valid date found.
+    Checks if a message indicates delegated collection services.
+
     Args:
-        message (str): The message text to parse for dates. Should contain month names
-                       followed by day numbers (e.g., "January 15, 22" or "February 3, 10, 17").
-        source_type (str): The type of waste collection source (e.g., 'trash', 'recycling').
-                           Used to categorize each Collection entry.
+        msg (str): Message string.
+
     Returns:
-        list[Collection]: A list of Collection objects, each representing a scheduled
-                          waste collection date with the current year. Invalid dates
-                          (e.g., February 30) are silently ignored and excluded from
-                          the results.
-    Note:
-        - Month name matching is case-insensitive.
-        - Uses the current year for all extracted dates.
-        - Days are matched as comma or space-separated numbers within month patterns.
+        bool: True if message indicates delegation.
     """
-    year = datetime.now().year
-    entries = []
+    # some organic sectors delegate to food+green instead of having their own schedule
+    m = msg.lower()
+    return ("offered via the collections" in m) or ("offerte via les collectes" in m)
 
-    for month_name, month_id in MONTHS.items():
-        pattern = rf"{month_name}\s+([0-9,\sand]+)"
-        matches = re.findall(pattern, message, re.IGNORECASE)
 
-        for block in matches:
-            nums = re.findall(r"\d+", block)
+def _merge_notes(a: str | None, b: str | None) -> str | None:
+    """
+    Merges two note strings, combining if both are present and different.
 
-            for day in nums:
-                try:
-                    d = datetime(year, month_id, int(day))
-                    entries.append(
-                        Collection(
-                            date=d.date(),
-                            t=source_type,
-                            icon=ICON_MAP.get(source_type),
-                        )
-                    )
-                except ValueError:
-                    pass
+    Args:
+        a (str | None): First note.
+        b (str | None): Second note.
 
-    return entries
+    Returns:
+        str | None: Merged note or None if both are empty.
+    """
+    a = (a or "").strip()
+    b = (b or "").strip()
+    if not a and not b:
+        return None
+    if a and not b:
+        return a
+    if b and not a:
+        return b
+    if a == b:
+        return a
+    return f"{a}\n\n{b}"
 
 
 class Source:
-    """Source for Montreal waste collection schedule using GIS datasets.
-
-    Fetches and parses waste collection schedule data for Montreal using GIS data from the city's open data portal.
-    Supports automatic sector detection via GPS coordinates or manual sector specification.
-    """
-
     def __init__(
         self,
         sector=None,
@@ -389,6 +345,7 @@ class Source:
         bulky=None,
         food=None,
         green=None,
+        organic=None,
         latitude=None,
         longitude=None,
         cache_hours=None,
@@ -399,6 +356,7 @@ class Source:
             "bulky": bulky,
             "food": food,
             "green": green,
+            "organic": organic,
         }
 
         self._lat = latitude
@@ -409,15 +367,20 @@ class Source:
 
         cache_hours = max(MIN_CACHE_HOURS, min(
             MAX_CACHE_HOURS, int(cache_hours)))
-        # Convert cache hours to seconds for internal use
         self._cache_max_age = cache_hours * 3600
 
-    def parse_collection(self, source_type, message):
-        explicit = _extract_explicit_dates(message, source_type)
-        if explicit:
-            return explicit
+    def parse_collection(self, source_type: str, message: str) -> list[Collection]:
+        """
+        Parses a collection schedule message and generates Collection entries for a weekday.
 
-        entries = []
+        Args:
+            source_type (str): Waste stream type.
+            message (str): Schedule message containing weekday info.
+
+        Returns:
+            list[Collection]: Collection entries for each occurrence of the weekday in the current year.
+        """
+        entries: list[Collection] = []
 
         weekday = None
         for day, idx in WEEKDAYS.items():
@@ -429,41 +392,39 @@ class Source:
             return entries
 
         year = datetime.now().year
+
         for month in range(1, 13):
             for day in range(1, 32):
                 try:
                     d = datetime(year, month, day)
-                    if d.weekday() == weekday:
-                        entries.append(
-                            Collection(
-                                date=d.date(),
-                                t=source_type,
-                                icon=ICON_MAP.get(source_type),
-                            )
-                        )
                 except ValueError:
-                    pass
+                    continue
+
+                if d.weekday() == weekday:
+                    entries.append(
+                        Collection(
+                            date=d.date(),
+                            t=source_type,
+                            icon=ICON_MAP.get(source_type),
+                        )
+                    )
 
         return entries
 
-    def get_data_by_source(self, source_type, url):
-        """Retrieve waste collection schedule data for a specific source type and sector.
-
-        Loads GeoJSON data from the provided URL, determines the sector either from manual configuration or by resolving coordinates to a sector, then extracts and parses collection schedule messages for that sector.
+    def get_data_by_source(self, source_type: str, url: str) -> tuple[list[Collection], bool]:
+        """
+        Retrieves waste collection schedule data for a specific source and sector.
 
         Args:
-            source_type (str): Type of waste collection source (e.g., 'garbage', 'recycling').
-            url (str): URL to the GeoJSON file containing sector and collection schedule data.
+            source_type (str): Waste stream type.
+            url (str): GeoJSON URL.
 
         Returns:
-            list: Parsed collection schedule entries for the resolved sector.
-
-        Raises:
-            SourceArgumentException: If sector is not manually provided and latitude/longitude are not available for automatic sector resolution.
+            tuple[list[Collection], bool]: Parsed collection entries and delegation flag.
         """
         features = _load_geojson(url, self._cache_max_age)
 
-        sector = self._manual_sector[source_type]
+        sector = self._manual_sector.get(source_type)
 
         if sector is None:
             if self._lat is None or self._lon is None:
@@ -471,34 +432,87 @@ class Source:
                     "latitude",
                     "Latitude/longitude required when sector not provided.",
                 )
-            sector = _resolve_sector(self._lat, self._lon, features)
+            sector = _resolve_sector(
+                float(self._lat), float(self._lon), features)
             LOGGER.info("%s auto sector: %s", source_type, sector)
 
-        entries = []
+        entries: list[Collection] = []
+        delegated = False
+
         for feature in features:
-            if feature["properties"]["SECTEUR"] != sector:
+            props = feature.get("properties") or {}
+            if props.get("SECTEUR") != sector:
                 continue
 
-            msg = feature["properties"].get("MESSAGE_EN")
-            if msg:
-                entries.extend(
-                    self.parse_collection(source_type.capitalize(), msg)
-                )
+            msg = str(props.get("MESSAGE_EN") or props.get("MESSAGE_FR") or "")
 
-        return entries
+            if _is_delegation_message(msg):
+                delegated = True
+                continue
 
-    def fetch(self):
-        """Fetch waste collection schedule data from all Montreal GIS datasets.
+            parsed = self.parse_collection(source_type.capitalize(), msg)
 
-        Discovers all available datasets and retrieves waste collection entries from each source.
+            note = _merge_notes(
+                props.get("EXCEPTION_EN") or props.get("EXCEPTION_FR"),
+                None,
+            )
+            if note:
+                for e in parsed:
+                    # attach exception text as note metadata
+                    try:
+                        e.note = note
+                    except Exception:
+                        pass
+
+            entries.extend(parsed)
+
+        return entries, delegated
+
+    def fetch(self) -> list[Collection]:
+        """
+        Fetches waste collection schedule data from all Montreal GIS datasets.
 
         Returns:
-            list: Waste collection entries aggregated from all discovered datasets.
+            list[Collection]: Aggregated waste collection entries.
         """
         urls = _discover_datasets()
-        entries = []
+
+        stream_entries: dict[str, list[Collection]] = {}
+        delegation_flags: dict[str, bool] = {}
 
         for key, url in urls.items():
-            entries.extend(self.get_data_by_source(key, url))
+            entries, delegated = self.get_data_by_source(key, url)
+            stream_entries[key] = entries
+            delegation_flags[key] = delegated
 
-        return entries
+        organic_notes: dict[date, str | None] = {}
+
+        # organic can be delegated to food+green, we merge dates instead of reusing objects
+        if delegation_flags.get("organic"):
+            for e in stream_entries.get("green", []):
+                organic_notes.setdefault(e.date, getattr(e, "note", None))
+            for e in stream_entries.get("food", []):
+                organic_notes.setdefault(e.date, getattr(e, "note", None))
+
+        # explicit organic always wins over delegated ones
+        for e in stream_entries.get("organic", []):
+            organic_notes[e.date] = getattr(e, "note", None)
+
+        final: list[Collection] = []
+
+        for key, entries in stream_entries.items():
+            if key == "organic":
+                continue
+            final.extend(entries)
+
+        for d, n in organic_notes.items():
+            final.append(
+                Collection(
+                    date=d,
+                    t="Organic",
+                    icon=ICON_MAP["Organic"],
+                    note=n,
+                )
+            )
+
+        return final
