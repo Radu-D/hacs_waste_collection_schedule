@@ -101,6 +101,21 @@ WEEKDAYS = {
     "Sunday": 6,
 }
 
+MONTHS = {
+    "January": 1,
+    "February": 2,
+    "March": 3,
+    "April": 4,
+    "May": 5,
+    "June": 6,
+    "July": 7,
+    "August": 8,
+    "September": 9,
+    "October": 10,
+    "November": 11,
+    "December": 12,
+}
+
 DEFAULT_CACHE_HOURS = 24
 MIN_CACHE_HOURS = 1
 # 7 days should be more than enough to cover any temporary issues with the CKAN API or dataset updates
@@ -111,15 +126,7 @@ _DATASET_URLS = None
 
 
 def _cache_dir():
-    """Return the cache directory for waste collection schedule data.
-
-    Creates a hidden cache directory at '.waste_cache' in the current working directory
-    if it does not already exist. Used to store cached data to avoid redundant API calls.
-
-    Returns:
-        Path: Path object pointing to the '.waste_cache' directory.
-    """
-    base = Path(".waste_cache")
+    base = Path.home() / ".waste_cache"
     base.mkdir(exist_ok=True)
     return base
 
@@ -159,7 +166,9 @@ def _discover_datasets():
                 urls[key] = resource["url"]
 
     if len(urls) != 5:
-        raise Exception("Could not discover all Montreal datasets")
+        raise Exception(
+            f"Expected 5 datasets, found {len(urls)}. CKAN structure may have changed."
+        )
 
     _DATASET_URLS = urls
     return urls
@@ -320,6 +329,52 @@ def _resolve_sector(lat, lon, features):
     )
 
 
+def _extract_explicit_dates(message, source_type):
+    """
+    Extract explicit waste collection dates from a message string.
+    This function searches for month names followed by day numbers in the provided
+    message and creates Collection entries for each valid date found.
+    Args:
+        message (str): The message text to parse for dates. Should contain month names
+                       followed by day numbers (e.g., "January 15, 22" or "February 3, 10, 17").
+        source_type (str): The type of waste collection source (e.g., 'trash', 'recycling').
+                           Used to categorize each Collection entry.
+    Returns:
+        list[Collection]: A list of Collection objects, each representing a scheduled
+                          waste collection date with the current year. Invalid dates
+                          (e.g., February 30) are silently ignored and excluded from
+                          the results.
+    Note:
+        - Month name matching is case-insensitive.
+        - Uses the current year for all extracted dates.
+        - Days are matched as comma or space-separated numbers within month patterns.
+    """
+    year = datetime.now().year
+    entries = []
+
+    for month_name, month_id in MONTHS.items():
+        pattern = rf"{month_name}\s+([0-9,\sand]+)"
+        matches = re.findall(pattern, message, re.IGNORECASE)
+
+        for block in matches:
+            nums = re.findall(r"\d+", block)
+
+            for day in nums:
+                try:
+                    d = datetime(year, month_id, int(day))
+                    entries.append(
+                        Collection(
+                            date=d.date(),
+                            t=source_type,
+                            icon=ICON_MAP.get(source_type),
+                        )
+                    )
+                except ValueError:
+                    pass
+
+    return entries
+
+
 class Source:
     """Source for Montreal waste collection schedule using GIS datasets.
 
@@ -358,17 +413,10 @@ class Source:
         self._cache_max_age = cache_hours * 3600
 
     def parse_collection(self, source_type, message):
-        """Parse a collection schedule message and generate Collection entries for a specific weekday.
+        explicit = _extract_explicit_dates(message, source_type)
+        if explicit:
+            return explicit
 
-        Extracts the day of the week from the message text, then generates Collection entries for every occurrence of that weekday throughout the current year.
-
-        Args:
-            source_type (str): Type of waste collection (e.g., 'organic', 'recyclable').
-            message (str): Collection schedule message containing a day of the week.
-
-        Returns:
-            list[Collection]: Collection objects for each occurrence of the specified weekday in the current year. Empty if no valid weekday found.
-        """
         entries = []
 
         weekday = None
