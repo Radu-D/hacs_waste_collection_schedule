@@ -1,57 +1,35 @@
+import json
+import time
 import logging
 import re
+from pathlib import Path
 from datetime import datetime
 
 import requests
-from waste_collection_schedule import Collection  # type: ignore[attr-defined]
+from waste_collection_schedule import Collection
+from waste_collection_schedule.exceptions import SourceArgumentException
 
-# Currently, Montreal does not offer an iCal/Webcal subscription method.
-# The GeoJSON file provides sector-specific details.
-# The waste collection schedule is then interpreted from English natural language. Not every sector follows the same structure.
-# This method is not highly reliable but serves as an acceptable workaround until a better solution is provided by the city.
+LOGGER = logging.getLogger(__name__)
 
 TITLE = "Montreal (QC)"
-DESCRIPTION = "Source script for montreal.ca/info-collectes"
+DESCRIPTION = "Official Montreal waste collection using GIS datasets"
 URL = "https://montreal.ca/info-collectes"
+COUNTRY = "ca"
+
 TEST_CASES = {
-    "Lasalle": {"sector": "LSL4"},
-    "Mercier-Hochelaga": {
-        "sector": "MHM_42-5_A",
-        "food": "MHM-42-S",
-        "recycling": "MHM-42-S",
-    },
-    "Ahuntsic": {"sector": "AC-2"},
-    "Rosemont": {
-        "sector": "RPP-RE-22-OM",
-        "recycling": "RPP_MR-5",
-        "food": "RPP-RE-22-RA",
-        "green": "RPP-RE-22-RV",
-        "bulky": "RPP-REGIE-22",
-    },
+    "Downtown": {"latitude": 45.5017, "longitude": -73.5673},
+    "Plateau": {"latitude": 45.525, "longitude": -73.58},
 }
 
-API_URL = [
-    {
-        "type": "Waste",
-        "url": "https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson",
-    },
-    {
-        "type": "Recycling",
-        "url": "https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/d02dac7d-a114-4113-8e52-266001447591/download/collecte-des-matieres-recyclables.geojson",
-    },
-    {
-        "type": "Food",
-        "url": "https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/61e8c7e6-9bf1-45d9-8ebe-d7c0d50cfdbb/download/collecte-des-residus-alimentaires.geojson",
-    },
-    {
-        "type": "Green",
-        "url": "https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/d0882022-c74d-4fe2-813d-1aa37f6427c9/download/collecte-des-residus-verts-incluant-feuilles-mortes.geojson",
-    },
-    {
-        "type": "Bulky",
-        "url": "https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/2345d55a-5325-488c-b4fc-a885fae458e2/download/collecte-des-residus-de-construction-de-renovation-et-de-demolition-crd-et-encombrants.geojson",
-    },
-]
+CKAN_PACKAGE_URL = "https://donnees.montreal.ca/api/3/action/package_show?id=info-collectes"
+
+RESOURCE_KEYWORDS = {
+    "waste": "ordures",
+    "recycling": "recyclables",
+    "food": "alimentaires",
+    "green": "verts",
+    "bulky": "encombrants",
+}
 
 ICON_MAP = {
     "Waste": "mdi:trash-can",
@@ -61,10 +39,57 @@ ICON_MAP = {
     "Bulky": "mdi:sofa",
 }
 
+HOW_TO_GET_ARGUMENTS_DESCRIPTION = {
+    "en": "Leave latitude/longitude empty to auto-detect sectors from Home Assistant location.",
+    "fr": "Laissez la latitude/longitude vide pour détecter automatiquement les secteurs à partir de l'emplacement de Home Assistant.",
+}
+
+PARAM_DESCRIPTIONS = {
+    "en": {
+        "latitude": "Optional latitude override",
+        "longitude": "Optional longitude override",
+        "sector": "Manual waste sector override",
+        "recycling": "Manual recycling sector override",
+        "bulky": "Manual bulky sector override",
+        "food": "Manual food sector override",
+        "green": "Manual green sector override",
+    },
+    "fr": {
+        "latitude": "Remplacement facultatif de la latitude",
+        "longitude": "Remplacement facultatif de la longitude",
+        "sector": "Remplacement manuel du secteur des déchets",
+        "recycling": "Remplacement manuel du secteur du recyclage",
+        "bulky": "Remplacement manuel du secteur des encombrants",
+        "food": "Remplacement manuel du secteur alimentaire",
+        "green": "Remplacement manuel du secteur vert",
+    },
+}
+
+PARAM_TRANSLATIONS = {
+    "en": {
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "sector": "Waste sector",
+        "recycling": "Recycling sector",
+        "bulky": "Bulky sector",
+        "food": "Food sector",
+        "green": "Green sector",
+    },
+    "fr": {
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "sector": "Secteur des déchets",
+        "recycling": "Secteur du recyclage",
+        "bulky": "Secteur des encombrants",
+        "food": "Secteur alimentaire",
+        "green": "Secteur vert",
+    },
+}
+
 WEEKDAYS = {
     "Monday": 0,
     "Tuesday": 1,
-    "Tuesay": 1,  # Typo in message "Collections take place on TUESAYS" (instead of TUESDAYS).
+    "Tuesay": 1,
     "Wednesday": 2,
     "Thursday": 3,
     "Friday": 4,
@@ -72,293 +97,217 @@ WEEKDAYS = {
     "Sunday": 6,
 }
 
-MONTHS = {
-    "January": 1,
-    "February": 2,
-    "March": 3,
-    "April": 4,
-    "May": 5,
-    "June": 6,
-    "July": 7,
-    "August": 8,
-    "September": 9,
-    "October": 10,
-    "November": 11,
-    "December": 12,
-}
+CACHE_MAX_AGE = 7 * 24 * 3600
+_GEO_CACHE: dict[str, list] = {}
+_DATASET_URLS = None
 
-MONTH_PATTERN = r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\b"
 
-LOGGER = logging.getLogger(__name__)
-HOW_TO_GET_ARGUMENTS_DESCRIPTION = {
-    "en": 'Download on your computer a <a href="https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson">Montreal GeoJSON file</a><br/>Visit https://geojson.io/<br/>Click on *Open* and select the Montreal GeoJSON file<br/>Find your sector on the map.',
-    "fr": 'Téléchargez un <a href="https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson">fichier Montreal GeoJSON</a><br/>Visitez https://geojson.io/<br/>Ouvrez le fichier Montreal GeoJSON<br/>Trouvez votre secteur sur la carte.',
-    "de": 'Laden Sie eine <a href="https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson">Montreal GeoJSON-Datei</a> auf Ihren Computer herunter<br/>Besuchen Sie https://geojson.io/<br/>Klicken Sie auf *Öffnen* und wählen Sie die Montreal GeoJSON-Datei aus<br/>Finden Sie Ihren Sektor auf der Karte.',
-    "it": 'Scarica sul tuo computer un <a href="https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson">file GeoJSON di Montreal</a><br/>Visita https://geojson.io/<br/>Clicca su *Apri* e seleziona il file GeoJSON di Montreal<br/>Trova il tuo settore sulla mappa.',
-}
+def _cache_dir():
+    base = Path(".waste_cache")
+    base.mkdir(exist_ok=True)
+    return base
 
-PARAM_TRANSLATIONS = {
-    "en": {
-        "sector": "Waste sector",
-        "recycling": "Recycling sector",
-        "bulky": "Bulky items sector",
-        "food": "Food waste sector",
-        "green": "Greens and leafs sector",
-    },
-    "fr": {
-        "sector": "Secteur ordure ménagère",
-        "recycling": "Secteur recyclage",
-        "bulky": "Secteur item encombrants",
-        "food": "Secteur compost",
-        "green": "Secteur résiduts verts et feuilles mortes",
-    },
-    "de": {
-        "sector": "Abfallsektor",
-        "recycling": "Recyclingsektor",
-        "bulky": "Sperrmüllsektor",
-        "food": "Biomüllsektor",
-        "green": "Grünabfallsektor",
-    },
-    "it": {
-        "sector": "Settore rifiuti",
-        "recycling": "Settore riciclaggio",
-        "bulky": "Settore rifiuti ingombranti",
-        "food": "Settore rifiuti organici",
-        "green": "Settore rifiuti verdi",
-    },
-}
-PARAM_DESCRIPTIONS = {
-    "en": {
-        "sector": "This is the default sector.",
-        "recycling": "If value is different from waste sector.",
-        "bulky": "If value is different from waste sector.",
-        "food": "If value is different from waste sector.",
-        "green": "If value is different from waste sector.",
-    },
-    "fr": {
-        "sector": "Ce secteur est utilisé par défault",
-        "recycling": "Si différent du secteur des ordures ménagères.",
-        "bulky": "Si différent du secteur des ordures ménagères.",
-        "food": "Si différent du secteur des ordures ménagères.",
-        "green": "Si différent du secteur des ordures ménagères.",
-    },
-    "de": {
-        "sector": "Dies ist der Standardsektor.",
-        "recycling": "Wenn der Wert vom Abfallsektor abweicht.",
-        "bulky": "Wenn der Wert vom Abfallsektor abweicht.",
-        "food": "Wenn der Wert vom Abfallsektor abweicht.",
-        "green": "Wenn der Wert vom Abfallsektor abweicht.",
-    },
-    "it": {
-        "sector": "Questo è il settore predefinito.",
-        "recycling": "Se il valore è diverso dal settore dei rifiuti.",
-        "bulky": "Se il valore è diverso dal settore dei rifiuti.",
-        "food": "Se il valore è diverso dal settore dei rifiuti.",
-        "green": "Se il valore è diverso dal settore dei rifiuti.",
-    },
-}
+
+def _discover_datasets():
+    global _DATASET_URLS
+
+    if _DATASET_URLS:
+        return _DATASET_URLS
+
+    LOGGER.info("Discovering Montreal datasets via CKAN")
+
+    r = requests.get(CKAN_PACKAGE_URL, timeout=60)
+    r.raise_for_status()
+    data = r.json()["result"]
+
+    urls = {}
+
+    for resource in data["resources"]:
+        name = resource["name"].lower()
+
+        for key, keyword in RESOURCE_KEYWORDS.items():
+            if keyword in name and resource["format"].lower() == "geojson":
+                urls[key] = resource["url"]
+
+    if len(urls) != 5:
+        raise Exception("Could not discover all Montreal datasets")
+
+    _DATASET_URLS = urls
+    return urls
+
+
+def _compute_bbox(polygon):
+    lats, lons = [], []
+    for ring in polygon:
+        for lon, lat in ring:
+            lats.append(lat)
+            lons.append(lon)
+    return min(lats), min(lons), max(lats), max(lons)
+
+
+def _bbox_contains(lat, lon, bbox):
+    min_lat, min_lon, max_lat, max_lon = bbox
+    return min_lat <= lat <= max_lat and min_lon <= lon <= max_lon
+
+
+def _point_in_polygon(lat, lon, polygon):
+    def point_in_ring(lat, lon, ring):
+        inside = False
+        j = len(ring) - 1
+        for i in range(len(ring)):
+            lon1, lat1 = ring[i]
+            lon2, lat2 = ring[j]
+            intersect = ((lat1 > lat) != (lat2 > lat)) and (
+                lon < (lon2 - lon1) * (lat - lat1) /
+                (lat2 - lat1 + 1e-12) + lon1
+            )
+            if intersect:
+                inside = not inside
+            j = i
+        return inside
+
+    if not point_in_ring(lat, lon, polygon[0]):
+        return False
+    for hole in polygon[1:]:
+        if point_in_ring(lat, lon, hole):
+            return False
+    return True
+
+
+def _prepare_features(features):
+    prepared = []
+    for feature in features:
+        geom = feature["geometry"]
+
+        if geom["type"] == "Polygon":
+            polys = [geom["coordinates"]]
+        elif geom["type"] == "MultiPolygon":
+            polys = geom["coordinates"]
+        else:
+            continue
+
+        feature["_prepared"] = [
+            (poly, _compute_bbox(poly)) for poly in polys
+        ]
+        prepared.append(feature)
+
+    return prepared
+
+
+def _load_geojson(url):
+    if url in _GEO_CACHE:
+        return _GEO_CACHE[url]
+
+    cache_path = _cache_dir() / url.split("/")[-1]
+
+    if not cache_path.exists() or time.time() - cache_path.stat().st_mtime > CACHE_MAX_AGE:
+        LOGGER.info("Downloading Montreal dataset %s", url)
+        r = requests.get(url, timeout=60)
+        r.raise_for_status()
+        cache_path.write_bytes(r.content)
+
+    data = json.loads(cache_path.read_text())
+    prepared = _prepare_features(data["features"])
+    _GEO_CACHE[url] = prepared
+    return prepared
+
+
+def _resolve_sector(lat, lon, features):
+    for feature in features:
+        for poly, bbox in feature["_prepared"]:
+            if not _bbox_contains(lat, lon, bbox):
+                continue
+            if _point_in_polygon(lat, lon, poly):
+                return feature["properties"]["SECTEUR"]
+
+    raise SourceArgumentException(
+        "latitude",
+        "Location is outside Montreal. Use manual sector override."
+    )
 
 
 class Source:
     def __init__(
         self,
-        sector: str,
-        recycling: str | None = None,
-        bulky: str | None = None,
-        food: str | None = None,
-        green: str | None = None,
+        sector=None,
+        recycling=None,
+        bulky=None,
+        food=None,
+        green=None,
+        latitude=None,
+        longitude=None,
     ):
-        self._sector: dict[str, str] = {
+        self._manual_sector = {
             "waste": sector,
-            "recycling": recycling if recycling else sector,
-            "bulky": bulky if bulky else sector,
-            "food": food if food else sector,
-            "green": green if green else sector,
+            "recycling": recycling,
+            "bulky": bulky,
+            "food": food,
+            "green": green,
         }
+        self._lat = latitude
+        self._lon = longitude
 
-    def parse_collection(self, source_type, schedule_message):
-        """Parse GeoJSON from Info-Collecte data."""
+    def parse_collection(self, source_type, message):
         entries = []
-        # Searching for the weekday in the sentence
-        collection_day = None
-        for day in WEEKDAYS.keys():
-            if re.search(day, schedule_message, re.IGNORECASE):
-                collection_day = WEEKDAYS[day]
-                break  # Stop searching if the day is found
 
-        # These happens weekly
-        if not re.search(
-            r"(?:every\s+(?:.*)week|of the month)", schedule_message, re.IGNORECASE
-        ):
-            # Iterate through each month and day, and handle the "out of range" error
-            for month in range(1, 13):
-                for day in range(1, 32):
-                    try:
-                        date = datetime(datetime.now().year, month, day)
-                        if date.weekday() != collection_day:  # Tuesday has index 1
-                            continue
+        weekday = None
+        for day, idx in WEEKDAYS.items():
+            if re.search(day, message, re.IGNORECASE):
+                weekday = idx
+                break
+
+        if weekday is None:
+            return entries
+
+        year = datetime.now().year
+        for month in range(1, 13):
+            for day in range(1, 32):
+                try:
+                    d = datetime(year, month, day)
+                    if d.weekday() == weekday:
                         entries.append(
                             Collection(
-                                date=date.date(),
+                                date=d.date(),
                                 t=source_type,
                                 icon=ICON_MAP.get(source_type),
                             )
                         )
-                    except ValueError:
-                        pass  # Skip if the day is out of range for the month
-            return entries
+                except ValueError:
+                    pass
 
-        days = []
-        season = schedule_message.split("-")
-        header = season.pop(0)
-        # Extract year
-        if re.match(r".*(20\d\d).*", header):
-            year = int(re.match(r".*(20\d\d).*", header).group(1))
-        else:
-            year = datetime.now().year
-        for line in season:
-            date_range = False
-            dates_defined = False
-            months_found = []
-            month_start = 1
-            month_stop = 12
-            day_start = 1
-            day_stop = 31
-            # There could be seasonal schedules, every week, every other week or specific dates
-            if re.match(r".*[fF]rom (.*) to (.*)", line):
-                date_range = re.match(r".*[fF]rom (.*) to (.*)", line)
-                date_range_start = date_range.group(1)
-                date_range_stop = date_range.group(2)
-                for month, month_id in MONTHS.items():
-                    if re.search(rf"{month}", date_range_start, re.IGNORECASE):
-                        month_start = month_id
-                    if re.search(rf"{month}", date_range_stop, re.IGNORECASE):
-                        month_stop = month_id
-                if re.search(r"\d+", date_range_start):
-                    day_start = int(re.match(r".*(\d+).*", date_range_start).group(1))
-                if re.search(r"\d+", date_range_stop):
-                    day_stop = int(re.search(r"\d+(?!.*\d+)", date_range_stop).group(0))
-                within_dates = False
-            elif re.match(r"(.*\d+.*){1,}", line):
-                # Multiple dates ?
-                dates_defined = True
-                for month, month_id in MONTHS.items():
-                    if re.search(rf"{month}", line, re.IGNORECASE):
-                        months_found.append(month)
-
-            for month, month_id in MONTHS.items():
-                if date_range and (month_id < month_start or month_id > month_stop):
-                    continue
-                if dates_defined and month not in months_found:
-                    continue
-                if re.search("(every )?week(ly)?", line):
-                    for day in range(1, 32):
-                        try:
-                            if (
-                                not within_dates
-                                and day_start == day
-                                and month_start == month_id
-                            ):
-                                within_dates = True
-                            if (
-                                within_dates
-                                and day_stop >= day
-                                and month_stop == month_id
-                            ):
-                                within_dates = False
-                            if within_dates:
-                                date = datetime(year, month_id, day)
-                                if (
-                                    date.weekday() == collection_day
-                                ):  # Tuesday has index 1
-                                    days.append(date.date())
-                        except ValueError:
-                            pass  # Skip if the day is out of range for the month
-                    continue
-
-                # Splitting the string by ',' and 'and' to extract individual numbers
-                line = line.replace(";", "")
-                line = line.replace(".", "")
-                line = line.replace(":", "")
-                line = line.replace("*", "")
-
-                try:
-                    days_in_month = re.search(
-                        rf"\b{month}(.*){MONTH_PATTERN}", line, re.IGNORECASE
-                    )
-                    if not days_in_month:
-                        days_in_month = re.search(
-                            rf"(?:\s*{month} {year})(.*)", line, re.IGNORECASE
-                        ).group(1)
-                    else:
-                        days_in_month = days_in_month.group(1)
-
-                    days_in_month = re.split(r", | and ", days_in_month)
-                    days_in_month = [
-                        part.lstrip().split(" ")[0] for part in days_in_month
-                    ]
-
-                    # Converting the extracted strings to integers
-                    days_numbers = [
-                        int(num) for num in days_in_month if num.isnumeric()
-                    ]
-
-                    for day in days_numbers:
-                        date = datetime(year, MONTHS[month], day)
-                        days.append(date.date())
-                    # break
-                except Exception:
-                    LOGGER.debug("No dates found in string.")
-                    break
-
-        entries = []
-        for d in days:
-            entries.append(
-                Collection(
-                    date=d,
-                    t=source_type,
-                    icon=ICON_MAP.get(source_type),
-                )
-            )
         return entries
 
     def get_data_by_source(self, source_type, url):
-        # Get waste collection zone by longitude and latitude
+        features = _load_geojson(url)
 
-        r = requests.get(url, timeout=60)
-        r.raise_for_status()
+        sector = self._manual_sector[source_type]
 
-        schedule = r.json()
+        if sector is None:
+            if self._lat is None or self._lon is None:
+                raise SourceArgumentException(
+                    "latitude",
+                    "Latitude/longitude required when sector not provided.",
+                )
+            sector = _resolve_sector(self._lat, self._lon, features)
+            LOGGER.info("%s auto sector: %s", source_type, sector)
+
         entries = []
-
-        # check the information for the sector
-        for feature in schedule["features"]:
-            if feature["properties"]["SECTEUR"] != self._sector[source_type.lower()]:
+        for feature in features:
+            if feature["properties"]["SECTEUR"] != sector:
                 continue
-            if feature["properties"]["JOUR"] and feature["properties"]["FREQUENCE"]:
-                # Not implemented yet
-                pass
-            else:
-                if feature["properties"]["MESSAGE_EN"]:
-                    schedule_message = feature["properties"]["MESSAGE_EN"]
-                    entries += self.parse_collection(source_type, schedule_message)
+
+            msg = feature["properties"].get("MESSAGE_EN")
+            if msg:
+                entries.extend(self.parse_collection(
+                    source_type.capitalize(), msg))
 
         return entries
 
     def fetch(self):
+        urls = _discover_datasets()
         entries = []
-        for source in API_URL:
-            try:
-                if self._sector[source["type"].lower()] is not None:
-                    entries += self.get_data_by_source(source["type"], source["url"])
-                else:
-                    LOGGER.warning(
-                        f"Skipped {source['type']} schedule as no sector was provided."
-                    )
-            except Exception:
-                # Probably because the natural language format does not match known formats.
-                LOGGER.error("Error", exc_info=True)
-                LOGGER.warning(
-                    f"Error while parsing {source['type']} schedule. Ignored."
-                )
+
+        for key, url in urls.items():
+            entries.extend(self.get_data_by_source(key, url))
+
         return entries
