@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from datetime import datetime, date
 from typing import Any
-
+from calendar import monthrange
 import requests
 from waste_collection_schedule import Collection
 from waste_collection_schedule.exceptions import SourceArgumentException
@@ -18,8 +18,10 @@ URL = "https://montreal.ca/info-collectes"
 COUNTRY = "ca"
 
 TEST_CASES = {
-    "Downtown": {"latitude": 45.5017, "longitude": -73.5673},
-    "Plateau": {"latitude": 45.525, "longitude": -73.58},
+    # "Downtown": {"latitude": 45.61355223813583, "longitude": -73.62396224886224},
+    # "Plateau": {"latitude": 45.5238970487704, "longitude": -73.5720096031592},
+    # edge case where there are delegated organic collections and biweekly types
+    "Hochelaga": {"latitude": 45.55267663199481, "longitude": -73.53461468484242},
 }
 
 CKAN_PACKAGE_URL = "https://donnees.montreal.ca/api/3/action/package_show?id=info-collectes"
@@ -337,6 +339,51 @@ def _merge_notes(a: str | None, b: str | None) -> str | None:
     return f"{a}\n\n{b}"
 
 
+def _parse_explicit_dates(source_type: str, message: str) -> list[Collection]:
+    entries = []
+
+    date_lines = re.findall(
+        r"-\s*([A-Za-z]+)\s+([\d,\sand]+)\s*(\d{4})?",
+        message
+    )
+
+    if not date_lines:
+        return entries
+
+    year = datetime.now().year
+
+    for month_name, days_blob, maybe_year in date_lines:
+
+        if maybe_year:
+            year = int(maybe_year)
+
+        try:
+            month = datetime.strptime(month_name, "%B").month
+        except ValueError:
+            continue
+
+        max_day = monthrange(year, month)[1]
+
+        days = re.findall(r"\d+", days_blob)
+
+        for d in days:
+            d = int(d)
+
+            # guard against bad values like 2026 being treated as a day
+            if d < 1 or d > max_day:
+                continue
+
+            entries.append(
+                Collection(
+                    date=date(year, month, d),
+                    t=source_type,
+                    icon=ICON_MAP.get(source_type),
+                )
+            )
+
+    return entries
+
+
 class Source:
     def __init__(
         self,
@@ -380,6 +427,10 @@ class Source:
         Returns:
             list[Collection]: Collection entries for each occurrence of the weekday in the current year.
         """
+        explicit = _parse_explicit_dates(source_type, message)
+        if explicit:
+            return explicit
+
         entries: list[Collection] = []
 
         weekday = None
