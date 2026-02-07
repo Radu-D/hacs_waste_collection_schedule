@@ -18,10 +18,10 @@ URL = "https://montreal.ca/info-collectes"
 COUNTRY = "ca"
 
 TEST_CASES = {
-    # "Downtown": {"latitude": 45.61355223813583, "longitude": -73.62396224886224},
-    # "Plateau": {"latitude": 45.5238970487704, "longitude": -73.5720096031592},
-    # edge case where there are delegated organic collections and biweekly types
-    "Hochelaga": {"latitude": 45.55267663199481, "longitude": -73.53461468484242},
+    "Downtown": {"latitude": 45.61355223813583, "longitude": -73.62396224886224},
+    "Plateau": {"latitude": 45.5238970487704, "longitude": -73.5720096031592},
+    # edge case where there are delegated organic collections and biweekly waste type
+    "Hochelaga": {"latitude": 45.552610066853276, "longitude": -73.53401579976021},
 }
 
 CKAN_PACKAGE_URL = "https://donnees.montreal.ca/api/3/action/package_show?id=info-collectes"
