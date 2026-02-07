@@ -2961,58 +2961,62 @@
       },
       "args_montreal_ca": {
         "title": "Configure Source",
-        "description": "Configure your Montreal waste collection source.\n\nYou must either:\n• Provide latitude and longitude for automatic sector detection\n• Or manually enter sector codes\n\nIf latitude/longitude are provided, sectors are resolved automatically from official Montreal GIS datasets.",
+        "description": "Configure your Montreal waste collection source.\n\nYou must either:\n• Provide latitude and longitude for automatic sector detection\n• Or manually enter sector overrides\n\nIf coordinates are provided, sectors are resolved automatically from official Montreal GIS datasets.",
         "data": {
-          "calendar_title": "Calendar Title",
-          "latitude": "Latitude",
-          "longitude": "Longitude",
+          "calendar_title": "Calendar title (optional)",
+          "latitude": "Latitude (optional, default = Home Assistant location)",
+          "longitude": "Longitude (optional, default = Home Assistant location)",
           "sector": "Waste sector (optional override)",
           "recycling": "Recycling sector (optional override)",
           "food": "Food waste sector (optional override)",
           "green": "Green waste sector (optional override)",
           "bulky": "Bulky items sector (optional override)",
           "organic": "Organic sector (optional override)",
-          "note": "Collection note"
+          "note": "Collection note (optional)",
+          "cache_hours": "Cache hours (optional, default 24)"
         },
         "data_description": {
-          "calendar_title": "A user-friendly name for the calendar. If empty, the source name is used.",
-          "latitude": "Latitude used to automatically determine your collection sector.",
-          "longitude": "Longitude used to automatically determine your collection sector.",
-          "sector": "Manual override for waste sector. Leave empty to auto-detect.",
-          "recycling": "Manual override if different from the waste sector.",
-          "food": "Manual override if different from the waste sector.",
-          "green": "Manual override if different from the waste sector.",
-          "bulky": "Manual override if different from the waste sector.",
-          "organic": "Manual override if different from the waste sector.",
-          "note": "Optional note displayed on collection entries."
+          "calendar_title": "A user-friendly calendar name. If empty, the default source name is used.",
+          "latitude": "Used to automatically determine your collection sector.",
+          "longitude": "Used to automatically determine your collection sector.",
+          "sector": "Manual override for the waste sector. Leave empty for automatic detection.",
+          "recycling": "Override if different from the waste sector.",
+          "food": "Override if different from the waste sector.",
+          "green": "Override if different from the waste sector.",
+          "bulky": "Override if different from the waste sector.",
+          "organic": "Override if different from the waste sector.",
+          "note": "Optional note shown on collection entries.",
+          "cache_hours": "Number of hours to cache collection data. Values below 1 hour will be rounded up to 1 hour."
         }
       },
       "reconfigure_montreal_ca": {
         "title": "Reconfigure Source",
-        "description": "Update your Montreal waste collection configuration.\n\nYou must either provide latitude/longitude for automatic sector detection or manually override sectors.",
+        "description": "Update your Montreal waste collection configuration.\n\nYou must either:\n• Provide latitude and longitude for automatic sector detection\n• Or manually enter sector overrides\n\nIf coordinates are provided, sectors are resolved automatically from official Montreal GIS datasets.",
         "data": {
-          "calendar_title": "Calendar Title",
-          "latitude": "Latitude",
-          "longitude": "Longitude",
+          "calendar_title": "Calendar title (optional)",
+          "latitude": "Latitude (optional, default = Home Assistant location)",
+          "longitude": "Longitude (optional, default = Home Assistant location)",
           "sector": "Waste sector (optional override)",
           "recycling": "Recycling sector (optional override)",
           "food": "Food waste sector (optional override)",
           "green": "Green waste sector (optional override)",
           "bulky": "Bulky items sector (optional override)",
           "organic": "Organic sector (optional override)",
-          "note": "Collection note"
+          "note": "Collection note (optional)",
+          "cache_hours": "Cache hours (optional, default 24)"
         },
         "data_description": {
-          "calendar_title": "A user-friendly name for the calendar. If empty, the source name is used.",
-          "latitude": "Latitude used to automatically determine your collection sector.",
-          "longitude": "Longitude used to automatically determine your collection sector.",
-          "sector": "Manual override for waste sector. Leave empty to auto-detect.",
-          "recycling": "Manual override if different from the waste sector.",
-          "food": "Manual override if different from the waste sector.",
-          "green": "Manual override if different from the waste sector.",
-          "bulky": "Manual override if different from the waste sector.",
-          "organic": "Manual override if different from the waste sector.",
-          "note": "Optional note displayed on collection entries."
+          "calendar_title": "A user-friendly calendar name. If empty, the default source name is used.",
+          "latitude": "Used to automatically determine your collection sector.",
+          "longitude": "Used to automatically determine your collection sector.",
+          "sector": "Manual override for the waste sector. Leave empty for automatic detection.",
+          "recycling": "Override if different from the waste sector.",
+          "food": "Override if different from the waste sector.",
+          "green": "Override if different from the waste sector.",
+          "bulky": "Override if different from the waste sector.",
+          "organic": "Override if different from the waste sector.",
+          "note": "Optional note shown on collection entries.",
+          "cache_hours": "Number of hours to cache collection data. Values below 1 hour will be rounded up to 1 hour."
         }
       },
       "args_info_collectes_ca": {
