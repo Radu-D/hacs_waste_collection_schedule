@@ -16,7 +16,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.const import CONF_NAME, CONF_VALUE_TEMPLATE
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
     DurationSelector,
     DurationSelectorConfig,
@@ -103,6 +103,22 @@ SUPPORTED_ARG_TYPES = {
 }
 
 
+def _apply_ha_location_defaults(
+    args_input: dict[str, Any], module: types.ModuleType, hass: HomeAssistant
+) -> None:
+    try:
+        params = inspect.signature(module.Source.__init__).parameters
+    except (AttributeError, ValueError, TypeError):
+        return
+
+    if "latitude" in params and "latitude" not in args_input:
+        if hass.config.latitude is not None:
+            args_input["latitude"] = hass.config.latitude
+    if "longitude" in params and "longitude" not in args_input:
+        if hass.config.longitude is not None:
+            args_input["longitude"] = hass.config.longitude
+
+
 def get_customize_schema(defaults: dict[str, Any] = {}):
     schema = {
         vol.Optional(CONF_ALIAS, default=defaults.get(CONF_ALIAS, UNDEFINED)): str,
@@ -155,7 +171,8 @@ def get_sensor_schema(fetched_types, add_delete=False, defaults: dict = {}):
             ): int,
             vol.Optional(
                 CONF_VALUE_TEMPLATE + "_preset",
-                default=defaults.get(CONF_VALUE_TEMPLATE + "_preset", UNDEFINED),
+                default=defaults.get(
+                    CONF_VALUE_TEMPLATE + "_preset", UNDEFINED),
             ): SelectSelector(
                 SelectSelectorConfig(
                     options=[
@@ -172,7 +189,8 @@ def get_sensor_schema(fetched_types, add_delete=False, defaults: dict = {}):
                 default=defaults.get(CONF_VALUE_TEMPLATE, UNDEFINED),
             ): TemplateSelector(),
             vol.Optional(
-                CONF_DATE_TEMPLATE, default=defaults.get(CONF_DATE_TEMPLATE, UNDEFINED)
+                CONF_DATE_TEMPLATE, default=defaults.get(
+                    CONF_DATE_TEMPLATE, UNDEFINED)
             ): SelectSelector(
                 SelectSelectorConfig(
                     options=[
@@ -186,13 +204,16 @@ def get_sensor_schema(fetched_types, add_delete=False, defaults: dict = {}):
             ),
             vol.Optional(
                 CONF_DATE_TEMPLATE + "_preset",
-                default=defaults.get(CONF_DATE_TEMPLATE + "_preset", UNDEFINED),
+                default=defaults.get(CONF_DATE_TEMPLATE +
+                                     "_preset", UNDEFINED),
             ): TemplateSelector(),
             vol.Optional(
-                CONF_ADD_DAYS_TO, default=defaults.get(CONF_ADD_DAYS_TO, UNDEFINED)
+                CONF_ADD_DAYS_TO, default=defaults.get(
+                    CONF_ADD_DAYS_TO, UNDEFINED)
             ): cv.boolean,
             vol.Optional(
-                CONF_EVENT_INDEX, default=defaults.get(CONF_EVENT_INDEX, UNDEFINED)
+                CONF_EVENT_INDEX, default=defaults.get(
+                    CONF_EVENT_INDEX, UNDEFINED)
             ): int,
             vol.Optional(
                 CONF_COLLECTION_TYPES,
@@ -290,7 +311,8 @@ class SourceDict(TypedDict):
     id: str
 
 
-class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
+# type: ignore[call-arg]
+class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):
     """Config flow."""
 
     VERSION = CONFIG_VERSION
@@ -439,7 +461,8 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
         if (
             (isinstance(annotation, types.GenericAlias))
             or (
-                get_origin(annotation) is not None and hasattr(annotation, "__origin__")
+                get_origin(annotation) is not None and hasattr(
+                    annotation, "__origin__")
             )
             and (a := await self.__get_simple_annotation_type(annotation.__origin__))
         ):
@@ -516,7 +539,8 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
             }
 
         MODULE_FLOW_TYPES = (
-            module.CONFIG_FLOW_TYPES if hasattr(module, "CONFIG_FLOW_TYPES") else {}
+            module.CONFIG_FLOW_TYPES if hasattr(
+                module, "CONFIG_FLOW_TYPES") else {}
         )
 
         for arg in args:
@@ -634,6 +658,8 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
             errors.update(module.validate_params(args_input))
         options = {}
 
+        _apply_ha_location_defaults(args_input, module, self.hass)
+
         # Pop title if provided
         if CONF_SOURCE_CALENDAR_TITLE in args_input:
             options[CONF_SOURCE_CALENDAR_TITLE] = args_input.pop(
@@ -743,8 +769,10 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
         )
 
         if user_input is not None:
-            self._show_customize_config = user_input.get("show_customize_config", False)
-            self._show_sensor_config = user_input.get("show_sensor_config", False)
+            self._show_customize_config = user_input.get(
+                "show_customize_config", False)
+            self._show_sensor_config = user_input.get(
+                "show_sensor_config", False)
             if self._show_customize_config:
                 return await self.async_step_customize_select()
             elif self._show_sensor_config:
@@ -771,7 +799,8 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         if user_input is not None:
             self._customize_types = list(set(user_input.get(CONF_TYPE, [])))
-            self._fetched_types = list({*self._fetched_types, *self._customize_types})
+            self._fetched_types = list(
+                {*self._fetched_types, *self._customize_types})
             return await self.async_step_customize()
         return self.async_show_form(step_id="customize_select", data_schema=schema)
 
@@ -829,7 +858,8 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
             self.sensors: list[dict[str, Any]] = []
         errors: dict[str, str] = {}
         if sensor_input is not None:
-            args, errors = validate_sensor_user_input(sensor_input, self.sensors)
+            args, errors = validate_sensor_user_input(
+                sensor_input, self.sensors)
             if len(errors) == 0 or args.get("skip", False) is True:
                 if args.get("skip", False) is False:
                     self.sensors.append(args)
@@ -841,7 +871,8 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
             step_id="sensor",
             data_schema=get_sensor_schema(self._fetched_types),
             errors=errors,
-            description_placeholders={"sensor_number": str(len(self.sensors) + 1)},
+            description_placeholders={
+                "sensor_number": str(len(self.sensors) + 1)},
         )
 
     async def finish(self) -> ConfigFlowResult:
@@ -882,7 +913,8 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
             ) = await self.__validate_args_user_input(source, args_input, module)
             if len(errors) == 0:
                 data = {**config_entry.data}
-                data.update({CONF_SOURCE_NAME: source, CONF_SOURCE_ARGS: args_input})
+                data.update({CONF_SOURCE_NAME: source,
+                            CONF_SOURCE_ARGS: args_input})
                 return self.async_update_reload_and_abort(
                     config_entry,
                     title=title,
@@ -922,8 +954,10 @@ class WasteCollectionOptionsFlow(OptionsFlow):
             collection_types = list(coordinator._aggregator.types)
             calendar_title = coordinator._shell.calendar_title
 
-        customized_types = list(self._entry.options.get(CONF_CUSTOMIZE, {}).keys())
-        uncustomized_types = [x for x in collection_types if x not in customized_types]
+        customized_types = list(
+            self._entry.options.get(CONF_CUSTOMIZE, {}).keys())
+        uncustomized_types = [
+            x for x in collection_types if x not in customized_types]
 
         SCHEMA = vol.Schema(
             {
@@ -980,7 +1014,8 @@ class WasteCollectionOptionsFlow(OptionsFlow):
                         translation_key="sensor_select",
                         options=[
                             *[
-                                SelectOptionDict(label=x[CONF_NAME], value=x[CONF_NAME])
+                                SelectOptionDict(
+                                    label=x[CONF_NAME], value=x[CONF_NAME])
                                 for x in self._entry.options.get(CONF_SENSORS, [])
                             ],
                             SelectOptionDict(
@@ -1060,11 +1095,13 @@ class WasteCollectionOptionsFlow(OptionsFlow):
         return self.async_show_form(step_id="init", data_schema=SCHEMA, errors=errors)
 
     def get_types_of_sensors_and_customizations(self):
-        fetched_types = list(self._entry.options.get(CONF_CUSTOMIZE, {}).keys())
+        fetched_types = list(
+            self._entry.options.get(CONF_CUSTOMIZE, {}).keys())
         for c in self._entry.options.get(CONF_SENSORS, []):
             if CONF_TYPE in c:
                 fetched_types.extend(
-                    c[CONF_TYPE] if isinstance(c[CONF_TYPE], list) else [c[CONF_TYPE]]
+                    c[CONF_TYPE] if isinstance(c[CONF_TYPE], list) else [
+                        c[CONF_TYPE]]
                 )
         return list(set(fetched_types))
 

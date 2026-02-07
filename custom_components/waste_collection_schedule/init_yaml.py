@@ -1,5 +1,7 @@
 """YAML setup logic."""
 
+import importlib
+import inspect
 import logging
 import site
 from pathlib import Path
@@ -100,17 +102,34 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 show=c.get(const.CONF_SHOW, True),
                 icon=c.get(const.CONF_ICON),
                 picture=c.get(const.CONF_PICTURE),
-                use_dedicated_calendar=c.get(const.CONF_USE_DEDICATED_CALENDAR, False),
+                use_dedicated_calendar=c.get(
+                    const.CONF_USE_DEDICATED_CALENDAR, False),
                 dedicated_calendar_title=c.get(
                     const.CONF_DEDICATED_CALENDAR_TITLE, False
                 ),
             )
 
+        args = dict(source.get(const.CONF_SOURCE_ARGS, {}))
+        try:
+            module = importlib.import_module(
+                f"waste_collection_schedule.source.{source[const.CONF_SOURCE_NAME]}"
+            )
+            params = inspect.signature(module.Source.__init__).parameters
+        except (ImportError, AttributeError, ValueError, TypeError):
+            params = {}
+
+        if "latitude" in params and "latitude" not in args:
+            if hass.config.latitude is not None:
+                args["latitude"] = hass.config.latitude
+        if "longitude" in params and "longitude" not in args:
+            if hass.config.longitude is not None:
+                args["longitude"] = hass.config.longitude
+
         await hass.async_add_executor_job(
             api.add_source_shell,
             source[const.CONF_SOURCE_NAME],
             customize,
-            source.get(const.CONF_SOURCE_ARGS, {}),
+            args,
             source.get(const.CONF_SOURCE_CALENDAR_TITLE),
             source.get(const.CONF_DAY_OFFSET, 0),
         )
