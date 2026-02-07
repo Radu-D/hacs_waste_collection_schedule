@@ -2925,41 +2925,58 @@
       },
       "args_montreal_ca": {
         "title": "Quelle konfigurieren",
-        "description": "Konfiguriere deinen Service Provider. \n\nLaden Sie eine &lt;a href=\"https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson\"&gt;Montreal GeoJSON-Datei&lt;/a&gt; auf Ihren Computer herunter&lt;br/&gt;Besuchen Sie https://geojson.io/&lt;br/&gt;Klicken Sie auf *Öffnen* und wählen Sie die Montreal GeoJSON-Datei aus&lt;br/&gt;Finden Sie Ihren Sektor auf der Karte.\n\nMehr details: https://github.com/mampfes/hacs_waste_collection_schedule/blob/master/doc/source/montreal_ca.md",
+        "description": "Konfiguriere deine Abfallsammlung in Montreal.\n\nDu musst entweder:\n• Breiten- und Längengrad für automatische Sektorerkennung angeben\n• Oder Sektoren manuell eintragen\n\nWenn Breiten-/Längengrad angegeben sind, werden die Sektoren automatisch aus den offiziellen GIS-Daten von Montreal bestimmt.",
         "data": {
-          "calendar_title": "Kalender Titel",
-          "bulky": "Sperrmüllsektor",
-          "food": "Biomüllsektor",
-          "green": "Grünabfallsektor",
-          "recycling": "Recyclingsektor",
-          "sector": "Abfallsektor"
+          "calendar_title": "Kalendertitel",
+          "latitude": "Breitengrad",
+          "longitude": "Längengrad",
+          "sector": "Abfallsektor (optionale Überschreibung)",
+          "recycling": "Recyclingsektor (optionale Überschreibung)",
+          "food": "Lebensmittelabfallsektor (optionale Überschreibung)",
+          "green": "Grünabfallsektor (optionale Überschreibung)",
+          "bulky": "Sperrmüllsektor (optionale Überschreibung)",
+          "organic": "Bioabfallsektor (optionale Überschreibung)",
+          "note": "Hinweis zur Abholung"
         },
         "data_description": {
-          "calendar_title": "Ein lesbarerer oder benutzerfreundlicherer Name für den Müllkalender. Wenn nichts angegeben wird, wird der Name der Quelle verwendet.",
-          "bulky": "Wenn der Wert vom Abfallsektor abweicht.",
-          "food": "Wenn der Wert vom Abfallsektor abweicht.",
-          "green": "Wenn der Wert vom Abfallsektor abweicht.",
-          "recycling": "Wenn der Wert vom Abfallsektor abweicht.",
-          "sector": "Dies ist der Standardsektor."
+          "calendar_title": "Benutzerfreundlicher Name für den Kalender. Wenn leer, wird der Standardname verwendet.",
+          "latitude": "Breitengrad zur automatischen Bestimmung deines Sektors.",
+          "longitude": "Längengrad zur automatischen Bestimmung deines Sektors.",
+          "sector": "Manuelle Überschreibung des Abfallsektors. Leer lassen für automatische Erkennung.",
+          "recycling": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "food": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "green": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "bulky": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "organic": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "note": "Optionaler Hinweis für die Sammlungseinträge."
         }
       },
       "reconfigure_montreal_ca": {
-        "title": "Quelle Neu Konfigurieren",
-        "description": "Konfiguriere deinen Service Provider. \n\nLaden Sie eine &lt;a href=\"https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson\"&gt;Montreal GeoJSON-Datei&lt;/a&gt; auf Ihren Computer herunter&lt;br/&gt;Besuchen Sie https://geojson.io/&lt;br/&gt;Klicken Sie auf *Öffnen* und wählen Sie die Montreal GeoJSON-Datei aus&lt;br/&gt;Finden Sie Ihren Sektor auf der Karte.\n\nMehr details: https://github.com/mampfes/hacs_waste_collection_schedule/blob/master/doc/source/montreal_ca.md",
+        "title": "Quelle neu konfigurieren",
+        "description": "Aktualisiere deine Montreal-Abfallkonfiguration.\n\nDu musst entweder Breiten-/Längengrad angeben oder Sektoren manuell überschreiben.",
         "data": {
-          "calendar_title": "Kalender Titel",
-          "bulky": "Sperrmüllsektor",
-          "food": "Biomüllsektor",
-          "green": "Grünabfallsektor",
-          "recycling": "Recyclingsektor",
-          "sector": "Abfallsektor"
+          "calendar_title": "Kalendertitel",
+          "latitude": "Breitengrad",
+          "longitude": "Längengrad",
+          "sector": "Abfallsektor (optionale Überschreibung)",
+          "recycling": "Recyclingsektor (optionale Überschreibung)",
+          "food": "Lebensmittelabfallsektor (optionale Überschreibung)",
+          "green": "Grünabfallsektor (optionale Überschreibung)",
+          "bulky": "Sperrmüllsektor (optionale Überschreibung)",
+          "organic": "Bioabfallsektor (optionale Überschreibung)",
+          "note": "Hinweis zur Abholung"
         },
         "data_description": {
-          "bulky": "Wenn der Wert vom Abfallsektor abweicht.",
-          "food": "Wenn der Wert vom Abfallsektor abweicht.",
-          "green": "Wenn der Wert vom Abfallsektor abweicht.",
-          "recycling": "Wenn der Wert vom Abfallsektor abweicht.",
-          "sector": "Dies ist der Standardsektor."
+          "calendar_title": "Benutzerfreundlicher Name für den Kalender. Wenn leer, wird der Standardname verwendet.",
+          "latitude": "Breitengrad zur automatischen Bestimmung deines Sektors.",
+          "longitude": "Längengrad zur automatischen Bestimmung deines Sektors.",
+          "sector": "Manuelle Überschreibung des Abfallsektors. Leer lassen für automatische Erkennung.",
+          "recycling": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "food": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "green": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "bulky": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "organic": "Manuelle Überschreibung, falls abweichend vom Abfallsektor.",
+          "note": "Optionaler Hinweis für die Sammlungseinträge."
         }
       },
       "args_info_collectes_ca": {

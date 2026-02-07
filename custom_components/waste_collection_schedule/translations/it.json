@@ -2896,42 +2896,59 @@
         "data_description": {}
       },
       "args_montreal_ca": {
-        "title": "Configurazione Sorgente",
-        "description": "Compila i campi per ottenere le informazioni sul tuo servizio di raccolta. \n\nScarica sul tuo computer un &lt;a href=\"https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson\"&gt;file GeoJSON di Montreal&lt;/a&gt;&lt;br/&gt;Visita https://geojson.io/&lt;br/&gt;Clicca su *Apri* e seleziona il file GeoJSON di Montreal&lt;br/&gt;Trova il tuo settore sulla mappa.\n\nMaggiori informazioni: https://github.com/mampfes/hacs_waste_collection_schedule/blob/master/doc/source/montreal_ca.md.",
+        "title": "Configura sorgente",
+        "description": "Configura la raccolta rifiuti di Montréal.\n\nDevi scegliere una delle due opzioni:\n• Fornire latitudine e longitudine per il rilevamento automatico del settore\n• Oppure inserire manualmente i settori\n\nSe vengono fornite latitudine/longitudine, i settori vengono determinati automaticamente dai dataset GIS ufficiali di Montréal.",
         "data": {
-          "calendar_title": "Nome Calendario",
-          "bulky": "Settore rifiuti ingombranti",
-          "food": "Settore rifiuti organici",
-          "green": "Settore rifiuti verdi",
-          "recycling": "Settore riciclaggio",
-          "sector": "Settore rifiuti"
+          "calendar_title": "Titolo calendario",
+          "latitude": "Latitudine",
+          "longitude": "Longitudine",
+          "sector": "Settore rifiuti (override opzionale)",
+          "recycling": "Settore riciclo (override opzionale)",
+          "food": "Settore rifiuti alimentari (override opzionale)",
+          "green": "Settore rifiuti verdi (override opzionale)",
+          "bulky": "Settore rifiuti ingombranti (override opzionale)",
+          "organic": "Settore organico (override opzionale)",
+          "note": "Nota raccolta"
         },
         "data_description": {
-          "calendar_title": "Puoi cambiare il nome del calendario della raccolta dei rifiuti, altrimenti di default verra' utilizzato il nome del tuo fornitore di servizi.",
-          "bulky": "Se il valore è diverso dal settore dei rifiuti.",
-          "food": "Se il valore è diverso dal settore dei rifiuti.",
-          "green": "Se il valore è diverso dal settore dei rifiuti.",
-          "recycling": "Se il valore è diverso dal settore dei rifiuti.",
-          "sector": "Questo è il settore predefinito."
+          "calendar_title": "Nome leggibile del calendario. Se vuoto, viene usato il nome predefinito.",
+          "latitude": "Latitudine usata per determinare automaticamente il settore.",
+          "longitude": "Longitudine usata per determinare automaticamente il settore.",
+          "sector": "Override manuale del settore rifiuti. Lascia vuoto per auto-rilevamento.",
+          "recycling": "Override manuale se diverso dal settore rifiuti.",
+          "food": "Override manuale se diverso dal settore rifiuti.",
+          "green": "Override manuale se diverso dal settore rifiuti.",
+          "bulky": "Override manuale se diverso dal settore rifiuti.",
+          "organic": "Override manuale se diverso dal settore rifiuti.",
+          "note": "Nota opzionale mostrata negli eventi di raccolta."
         }
       },
       "reconfigure_montreal_ca": {
-        "title": "Riconfigurazione Sorgente",
-        "description": "Compila i campi per ottenere le informazioni sul tuo servizio di raccolta. \n\nScarica sul tuo computer un &lt;a href=\"https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson\"&gt;file GeoJSON di Montreal&lt;/a&gt;&lt;br/&gt;Visita https://geojson.io/&lt;br/&gt;Clicca su *Apri* e seleziona il file GeoJSON di Montreal&lt;br/&gt;Trova il tuo settore sulla mappa.\n\nPer maggiori informazioni: https://github.com/mampfes/hacs_waste_collection_schedule/blob/master/doc/source/montreal_ca.md.",
+        "title": "Riconfigura sorgente",
+        "description": "Aggiorna la configurazione della raccolta rifiuti di Montréal.\n\nFornisci latitudine/longitudine oppure imposta manualmente i settori.",
         "data": {
-          "calendar_title": "Nome Calendario",
-          "bulky": "Settore rifiuti ingombranti",
-          "food": "Settore rifiuti organici",
-          "green": "Settore rifiuti verdi",
-          "recycling": "Settore riciclaggio",
-          "sector": "Settore rifiuti"
+          "calendar_title": "Titolo calendario",
+          "latitude": "Latitudine",
+          "longitude": "Longitudine",
+          "sector": "Settore rifiuti (override opzionale)",
+          "recycling": "Settore riciclo (override opzionale)",
+          "food": "Settore rifiuti alimentari (override opzionale)",
+          "green": "Settore rifiuti verdi (override opzionale)",
+          "bulky": "Settore rifiuti ingombranti (override opzionale)",
+          "organic": "Settore organico (override opzionale)",
+          "note": "Nota raccolta"
         },
         "data_description": {
-          "bulky": "Se il valore è diverso dal settore dei rifiuti.",
-          "food": "Se il valore è diverso dal settore dei rifiuti.",
-          "green": "Se il valore è diverso dal settore dei rifiuti.",
-          "recycling": "Se il valore è diverso dal settore dei rifiuti.",
-          "sector": "Questo è il settore predefinito."
+          "calendar_title": "Nome leggibile del calendario. Se vuoto, viene usato il nome predefinito.",
+          "latitude": "Latitudine usata per determinare automaticamente il settore.",
+          "longitude": "Longitudine usata per determinare automaticamente il settore.",
+          "sector": "Override manuale del settore rifiuti. Lascia vuoto per auto-rilevamento.",
+          "recycling": "Override manuale se diverso dal settore rifiuti.",
+          "food": "Override manuale se diverso dal settore rifiuti.",
+          "green": "Override manuale se diverso dal settore rifiuti.",
+          "bulky": "Override manuale se diverso dal settore rifiuti.",
+          "organic": "Override manuale se diverso dal settore rifiuti.",
+          "note": "Nota opzionale mostrata negli eventi di raccolta."
         }
       },
       "args_info_collectes_ca": {

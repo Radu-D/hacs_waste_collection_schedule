@@ -2961,41 +2961,58 @@
       },
       "args_montreal_ca": {
         "title": "Configure Source",
-        "description": "Configure your service provider. \n\nDownload on your computer a &lt;a href=\"https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson\"&gt;Montreal GeoJSON file&lt;/a&gt;&lt;br/&gt;Visit https://geojson.io/&lt;br/&gt;Click on *Open* and select the Montreal GeoJSON file&lt;br/&gt;Find your sector on the map.\n\nMore details: https://github.com/mampfes/hacs_waste_collection_schedule/blob/master/doc/source/montreal_ca.md.",
+        "description": "Configure your Montreal waste collection source.\n\nYou must either:\n• Provide latitude and longitude for automatic sector detection\n• Or manually enter sector codes\n\nIf latitude/longitude are provided, sectors are resolved automatically from official Montreal GIS datasets.",
         "data": {
           "calendar_title": "Calendar Title",
-          "bulky": "Bulky items sector",
-          "food": "Food waste sector",
-          "green": "Greens and leafs sector",
-          "recycling": "Recycling sector",
-          "sector": "Waste sector"
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "sector": "Waste sector (optional override)",
+          "recycling": "Recycling sector (optional override)",
+          "food": "Food waste sector (optional override)",
+          "green": "Green waste sector (optional override)",
+          "bulky": "Bulky items sector (optional override)",
+          "organic": "Organic sector (optional override)",
+          "note": "Collection note"
         },
         "data_description": {
-          "calendar_title": "A more readable, or user-friendly, name for the waste calendar. If nothing is provided, the name returned by the source will be used.",
-          "bulky": "If value is different from waste sector.",
-          "food": "If value is different from waste sector.",
-          "green": "If value is different from waste sector.",
-          "recycling": "If value is different from waste sector.",
-          "sector": "This is the default sector."
+          "calendar_title": "A user-friendly name for the calendar. If empty, the source name is used.",
+          "latitude": "Latitude used to automatically determine your collection sector.",
+          "longitude": "Longitude used to automatically determine your collection sector.",
+          "sector": "Manual override for waste sector. Leave empty to auto-detect.",
+          "recycling": "Manual override if different from the waste sector.",
+          "food": "Manual override if different from the waste sector.",
+          "green": "Manual override if different from the waste sector.",
+          "bulky": "Manual override if different from the waste sector.",
+          "organic": "Manual override if different from the waste sector.",
+          "note": "Optional note displayed on collection entries."
         }
       },
       "reconfigure_montreal_ca": {
         "title": "Reconfigure Source",
-        "description": "Configure your service provider. \n\nDownload on your computer a &lt;a href=\"https://donnees.montreal.ca/dataset/2df0fa28-7a7b-46c6-912f-93b215bd201e/resource/5f3fb372-64e8-45f2-a406-f1614930305c/download/collecte-des-ordures-menageres.geojson\"&gt;Montreal GeoJSON file&lt;/a&gt;&lt;br/&gt;Visit https://geojson.io/&lt;br/&gt;Click on *Open* and select the Montreal GeoJSON file&lt;br/&gt;Find your sector on the map.\n\nMore details: https://github.com/mampfes/hacs_waste_collection_schedule/blob/master/doc/source/montreal_ca.md.",
+        "description": "Update your Montreal waste collection configuration.\n\nYou must either provide latitude/longitude for automatic sector detection or manually override sectors.",
         "data": {
           "calendar_title": "Calendar Title",
-          "bulky": "Bulky items sector",
-          "food": "Food waste sector",
-          "green": "Greens and leafs sector",
-          "recycling": "Recycling sector",
-          "sector": "Waste sector"
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "sector": "Waste sector (optional override)",
+          "recycling": "Recycling sector (optional override)",
+          "food": "Food waste sector (optional override)",
+          "green": "Green waste sector (optional override)",
+          "bulky": "Bulky items sector (optional override)",
+          "organic": "Organic sector (optional override)",
+          "note": "Collection note"
         },
         "data_description": {
-          "bulky": "If value is different from waste sector.",
-          "food": "If value is different from waste sector.",
-          "green": "If value is different from waste sector.",
-          "recycling": "If value is different from waste sector.",
-          "sector": "This is the default sector."
+          "calendar_title": "A user-friendly name for the calendar. If empty, the source name is used.",
+          "latitude": "Latitude used to automatically determine your collection sector.",
+          "longitude": "Longitude used to automatically determine your collection sector.",
+          "sector": "Manual override for waste sector. Leave empty to auto-detect.",
+          "recycling": "Manual override if different from the waste sector.",
+          "food": "Manual override if different from the waste sector.",
+          "green": "Manual override if different from the waste sector.",
+          "bulky": "Manual override if different from the waste sector.",
+          "organic": "Manual override if different from the waste sector.",
+          "note": "Optional note displayed on collection entries."
         }
       },
       "args_info_collectes_ca": {
