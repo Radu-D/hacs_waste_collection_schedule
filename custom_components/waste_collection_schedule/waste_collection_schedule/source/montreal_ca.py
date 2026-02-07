@@ -18,8 +18,8 @@ URL = "https://montreal.ca/info-collectes"
 COUNTRY = "ca"
 
 TEST_CASES = {
-    "Downtown": {"latitude": 45.61355223813583, "longitude": -73.62396224886224},
-    "Plateau": {"latitude": 45.5238970487704, "longitude": -73.5720096031592},
+    # "Downtown": {"latitude": 45.61355223813583, "longitude": -73.62396224886224},
+    # "Plateau": {"latitude": 45.5238970487704, "longitude": -73.5720096031592},
     # edge case where there are delegated organic collections and biweekly waste type
     "Hochelaga": {"latitude": 45.552610066853276, "longitude": -73.53401579976021},
 }
@@ -54,6 +54,8 @@ WEEKDAYS = {
     "Saturday": 5,
     "Sunday": 6,
 }
+
+WEEKDAY_PATTERN = "|".join(sorted(WEEKDAYS.keys(), key=str.lower))
 
 DEFAULT_CACHE_HOURS = 24
 MIN_CACHE_HOURS = 1
@@ -402,7 +404,7 @@ def _parse_weekly_range(source_type: str, message: str) -> list[Collection]:
     entries = []
 
     m = re.search(
-        r"from ([A-Za-z]+)\s+(\d+)\s+to\s+([A-Za-z]+)\s+(\d+).*?(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)",
+        rf"from ([A-Za-z]+)\s+(\d+)\s+to\s+([A-Za-z]+)\s+(\d+).*?({WEEKDAY_PATTERN})",
         message,
         re.IGNORECASE,
     )
@@ -422,10 +424,16 @@ def _parse_weekly_range(source_type: str, message: str) -> list[Collection]:
     d = start
     while d <= end:
         if d.weekday() == weekday:
-            entries.append(...)
+            entries.append(
+                Collection(
+                    date=d,
+                    t=source_type,
+                    icon=ICON_MAP.get(source_type),
+                )
+            )
         d += timedelta(days=1)
 
-    return entries
+    return _roll_forward(entries)
 
 
 def _expand_biweekly(source_type: str, base: list[Collection]) -> list[Collection]:
@@ -451,21 +459,33 @@ def _expand_biweekly(source_type: str, base: list[Collection]) -> list[Collectio
 
 def _roll_forward(entries: list[Collection]) -> list[Collection]:
     """
-    Moves past seasonal entries into the current year window.
+    Shifts a past-only schedule forward by whole years.
     Keeps relative month/day pattern.
     """
     if not entries:
         return entries
 
     today = date.today()
-    out = []
 
+    def add_year(d: date) -> date:
+        y = d.year + 1
+        last = monthrange(y, d.month)[1]
+        return date(y, d.month, min(d.day, last))
+
+    max_date = max(e.date for e in entries)
+    if max_date >= today:
+        return entries
+
+    years = 0
+    while max_date < today:
+        years += 1
+        max_date = add_year(max_date)
+
+    out = []
     for e in entries:
         d = e.date
-        while d < today:
-            y = d.year + 1
-            last = monthrange(y, d.month)[1]
-            d = date(y, d.month, min(d.day, last))
+        for _ in range(years):
+            d = add_year(d)
 
         out.append(
             Collection(
@@ -477,6 +497,39 @@ def _roll_forward(entries: list[Collection]) -> list[Collection]:
         )
 
     return out
+
+
+def _parse_first_weekday_of_month(source_type: str, message: str) -> list[Collection]:
+    entries: list[Collection] = []
+
+    m = re.search(
+        rf"first\s+({WEEKDAY_PATTERN})\s+of\s+the\s+month",
+        message,
+        re.IGNORECASE,
+    )
+    if not m:
+        return entries
+
+    weekday_name = m.group(1).capitalize()
+    weekday = WEEKDAYS.get(weekday_name)
+    if weekday is None:
+        return entries
+
+    year = datetime.now().year
+    for month in range(1, 13):
+        for day in range(1, 8):
+            d = date(year, month, day)
+            if d.weekday() == weekday:
+                entries.append(
+                    Collection(
+                        date=d,
+                        t=source_type,
+                        icon=ICON_MAP.get(source_type),
+                    )
+                )
+                break
+
+    return _roll_forward(entries)
 
 
 class Source:
@@ -523,6 +576,10 @@ class Source:
         if range_entries:
             return range_entries
 
+        first_weekday = _parse_first_weekday_of_month(source_type, message)
+        if first_weekday:
+            return first_weekday
+
         if explicit:
             return explicit
 
@@ -553,7 +610,7 @@ class Source:
                         )
                     )
 
-        return entries
+        return _roll_forward(entries)
 
     def get_data_by_source(self, source_type: str, url: str) -> tuple[list[Collection], tuple[bool, bool]]:
         features = _load_geojson(url, self._cache_max_age)
