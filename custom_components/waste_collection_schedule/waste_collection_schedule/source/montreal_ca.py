@@ -3,7 +3,7 @@ import time
 import logging
 import re
 from pathlib import Path
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Any
 from calendar import monthrange
 import requests
@@ -300,19 +300,17 @@ def _resolve_sector(lat: float, lon: float, features: list[dict[str, Any]]) -> s
     )
 
 
-def _is_delegation_message(msg: str) -> bool:
+def _detect_delegation(msg: str) -> tuple[bool, bool]:
     """
-    Checks if a message indicates delegated collection services.
-
-    Args:
-        msg (str): Message string.
-
     Returns:
-        bool: True if message indicates delegation.
+        (delegates_to_food_green, delegates_to_organic)
     """
-    # some organic sectors delegate to food+green instead of having their own schedule
     m = msg.lower()
-    return ("offered via the collections" in m) or ("offerte via les collectes" in m)
+
+    organic_to_food_green = "offered via the collections" in m
+    green_to_organic = "included in the collection of organic" in m
+
+    return organic_to_food_green, green_to_organic
 
 
 def _merge_notes(a: str | None, b: str | None) -> str | None:
@@ -340,48 +338,166 @@ def _merge_notes(a: str | None, b: str | None) -> str | None:
 
 
 def _parse_explicit_dates(source_type: str, message: str) -> list[Collection]:
+    entries: list[Collection] = []
+
+    msg = message or ""
+    current_year = datetime.now().year
+
+    # find first year mentioned
+    year_match = re.search(r"\b(20\d{2})\b", msg)
+    year = int(year_match.group(1)) if year_match else current_year
+
+    # split into logical lines to detect year transitions
+    lines = re.split(r"[\n;]", msg)
+
+    for line in lines:
+        # if line is just a year → update year context
+        y = re.search(r"\b(20\d{2})\b", line)
+        if y and not re.search(r"[A-Za-z]", line):
+            year = int(y.group(1))
+            continue
+
+        chunks = re.findall(
+            r"(?:weekly collection in\s+)?([A-Za-z]+)\s+([0-9][0-9,\sand]*)",
+            line,
+            flags=re.IGNORECASE,
+        )
+
+        for month_name, days_blob in chunks:
+            try:
+                month = datetime.strptime(month_name, "%B").month
+            except ValueError:
+                continue
+
+            days = [int(x) for x in re.findall(r"\d{1,2}", days_blob)]
+
+            for d in days:
+                try:
+                    dt = date(year, month, d)
+                except ValueError:
+                    continue
+
+                entries.append(
+                    Collection(
+                        date=dt,
+                        t=source_type,
+                        icon=ICON_MAP.get(source_type),
+                    )
+                )
+
+    # dedupe
+    seen = set()
+    out = []
+    for e in entries:
+        k = (e.date, e.type)
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(e)
+
+    today = date.today()
+
+    # if schedule is fully in the past, roll it forward one year
+    if out and max(e.date for e in out) < today:
+        rolled = []
+        for e in out:
+            try:
+                rolled.append(
+                    Collection(
+                        date=e.date.replace(year=e.date.year + 1),
+                        t=e.type,
+                        icon=e.icon,
+                    )
+                )
+            except ValueError:
+                continue
+        return rolled
+
+    return out
+
+
+def _parse_weekly_range(source_type: str, message: str) -> list[Collection]:
     entries = []
 
-    date_lines = re.findall(
-        r"-\s*([A-Za-z]+)\s+([\d,\sand]+)\s*(\d{4})?",
-        message
+    m = re.search(
+        r"from ([A-Za-z]+)\s+(\d+)\s+to\s+([A-Za-z]+)\s+(\d+).*?(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)",
+        message,
+        re.IGNORECASE,
     )
 
-    if not date_lines:
+    if not m:
         return entries
+
+    start_month, start_day, end_month, end_day, weekday_name = m.groups()
 
     year = datetime.now().year
 
-    for month_name, days_blob, maybe_year in date_lines:
+    start = date(year, datetime.strptime(
+        start_month, "%B").month, int(start_day))
+    end = date(year, datetime.strptime(end_month, "%B").month, int(end_day))
+    weekday = WEEKDAYS[weekday_name.capitalize()]
 
-        if maybe_year:
-            year = int(maybe_year)
-
-        try:
-            month = datetime.strptime(month_name, "%B").month
-        except ValueError:
-            continue
-
-        max_day = monthrange(year, month)[1]
-
-        days = re.findall(r"\d+", days_blob)
-
-        for d in days:
-            d = int(d)
-
-            # guard against bad values like 2026 being treated as a day
-            if d < 1 or d > max_day:
-                continue
-
+    d = start
+    while d <= end:
+        if d.weekday() == weekday:
             entries.append(
                 Collection(
-                    date=date(year, month, d),
+                    date=d,
                     t=source_type,
                     icon=ICON_MAP.get(source_type),
                 )
             )
+        d = d.replace(day=d.day + 1) if d.day < 28 else d + timedelta(days=1)
 
     return entries
+
+
+def _expand_biweekly(source_type: str, base: list[Collection]) -> list[Collection]:
+    if not base:
+        return []
+
+    year = base[0].date.year
+    start = min(e.date for e in base)
+    end = date(year, 12, 31)
+
+    out = {e.date: e for e in base}
+
+    d = start
+    while d <= end:
+        out.setdefault(
+            d,
+            Collection(date=d, t=source_type, icon=ICON_MAP.get(source_type)),
+        )
+        d += timedelta(days=14)
+
+    return sorted(out.values(), key=lambda e: e.date)
+
+
+def _roll_forward(entries: list[Collection]) -> list[Collection]:
+    """
+    Moves past seasonal entries into the current year window.
+    Keeps relative month/day pattern.
+    """
+    if not entries:
+        return entries
+
+    today = date.today()
+    out = []
+
+    for e in entries:
+        d = e.date
+        while d < today:
+            d = date(d.year + 1, d.month, d.day)
+        out.append(
+            Collection(
+                date=d,
+                t=e.type,
+                icon=e.icon,
+                note=getattr(e, "note", None),
+            )
+        )
+
+    return out
 
 
 class Source:
@@ -417,16 +533,17 @@ class Source:
         self._cache_max_age = cache_hours * 3600
 
     def parse_collection(self, source_type: str, message: str) -> list[Collection]:
-        """
-        Parses a collection schedule message and generates Collection entries for a weekday.
+        explicit = _roll_forward(_parse_explicit_dates(source_type, message))
 
-        Args:
-            source_type (str): Waste stream type.
-            message (str): Schedule message containing weekday info.
+        # biweekly schedule anchored by explicit dates
+        if "once every two weeks" in message.lower():
+            return _expand_biweekly(source_type, explicit)
 
-        Returns:
-            list[Collection]: Collection entries for each occurrence of the weekday in the current year.
-        """
+        # weekly ranges like "from April 9 to May 28 every Wednesday"
+        range_entries = _parse_weekly_range(source_type, message)
+        if range_entries:
+            return range_entries
+
         explicit = _parse_explicit_dates(source_type, message)
         if explicit:
             return explicit
@@ -462,17 +579,7 @@ class Source:
 
         return entries
 
-    def get_data_by_source(self, source_type: str, url: str) -> tuple[list[Collection], bool]:
-        """
-        Retrieves waste collection schedule data for a specific source and sector.
-
-        Args:
-            source_type (str): Waste stream type.
-            url (str): GeoJSON URL.
-
-        Returns:
-            tuple[list[Collection], bool]: Parsed collection entries and delegation flag.
-        """
+    def get_data_by_source(self, source_type: str, url: str) -> tuple[list[Collection], tuple[bool, bool]]:
         features = _load_geojson(url, self._cache_max_age)
 
         sector = self._manual_sector.get(source_type)
@@ -488,7 +595,7 @@ class Source:
             LOGGER.info("%s auto sector: %s", source_type, sector)
 
         entries: list[Collection] = []
-        delegated = False
+        delegated = (False, False)
 
         for feature in features:
             props = feature.get("properties") or {}
@@ -497,8 +604,10 @@ class Source:
 
             msg = str(props.get("MESSAGE_EN") or props.get("MESSAGE_FR") or "")
 
-            if _is_delegation_message(msg):
-                delegated = True
+            deleg_to_fg, deleg_to_org = _detect_delegation(msg)
+
+            if deleg_to_fg or deleg_to_org:
+                delegated = (deleg_to_fg, deleg_to_org)
                 continue
 
             parsed = self.parse_collection(source_type.capitalize(), msg)
@@ -529,7 +638,7 @@ class Source:
         urls = _discover_datasets()
 
         stream_entries: dict[str, list[Collection]] = {}
-        delegation_flags: dict[str, bool] = {}
+        delegation_flags: dict[str, tuple[bool, bool]] = {}
 
         for key, url in urls.items():
             entries, delegated = self.get_data_by_source(key, url)
@@ -538,14 +647,30 @@ class Source:
 
         organic_notes: dict[date, str | None] = {}
 
-        # organic can be delegated to food+green, we merge dates instead of reusing objects
-        if delegation_flags.get("organic"):
+        organic_delegates_to_food_green, _ = delegation_flags.get(
+            "organic", (False, False))
+        _, green_delegates_to_organic = delegation_flags.get(
+            "green", (False, False))
+
+        # organic delegates to food+green
+        if organic_delegates_to_food_green:
             for e in stream_entries.get("green", []):
-                organic_notes.setdefault(e.date, getattr(e, "note", None))
+                organic_notes[e.date] = _merge_notes(
+                    organic_notes.get(e.date),
+                    getattr(e, "note", None),
+                )
             for e in stream_entries.get("food", []):
+                organic_notes[e.date] = _merge_notes(
+                    organic_notes.get(e.date),
+                    getattr(e, "note", None),
+                )
+
+        # green delegates to organic
+        if green_delegates_to_organic:
+            for e in stream_entries.get("organic", []):
                 organic_notes.setdefault(e.date, getattr(e, "note", None))
 
-        # explicit organic always wins over delegated ones
+        # explicit organic always wins
         for e in stream_entries.get("organic", []):
             organic_notes[e.date] = getattr(e, "note", None)
 
@@ -565,5 +690,9 @@ class Source:
                     note=n,
                 )
             )
+
+        today = date.today()
+        final = [e for e in final if e.date >= today]
+        final.sort(key=lambda e: e.date)
 
         return final
