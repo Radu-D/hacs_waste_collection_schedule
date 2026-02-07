@@ -8,9 +8,12 @@ class CollectionBase(dict):  # inherit from dict to enable JSON serialization
         date: datetime.date,
         icon: Optional[str] = None,
         picture: Optional[str] = None,
+        note: Optional[str] = None,
     ):
-        dict.__init__(self, date=date.isoformat(), icon=icon, picture=picture)
+        dict.__init__(self, date=date.isoformat(),
+                      icon=icon, picture=picture, note=note)
         self._date = date  # store date also as python date object
+        self.set_note(note)
 
     @property
     def date(self):
@@ -34,6 +37,14 @@ class CollectionBase(dict):  # inherit from dict to enable JSON serialization
     def set_picture(self, picture: str):
         self["picture"] = picture
 
+    @property
+    def note(self):
+        return self.get("note")
+
+    def set_note(self, note: str | None):
+        note = note.strip() or None if note else None
+        self["note"] = note
+
     def set_date(self, date: datetime.date):
         self._date = date
         self["date"] = date.isoformat()
@@ -46,8 +57,10 @@ class Collection(CollectionBase):
         t: str,
         icon: Optional[str] = None,
         picture: Optional[str] = None,
+        note: Optional[str] = None,
     ):
-        CollectionBase.__init__(self, date=date, icon=icon, picture=picture)
+        CollectionBase.__init__(
+            self, date=date, icon=icon, picture=picture, note=note)
         self["type"] = t
 
     @property
@@ -74,6 +87,10 @@ class CollectionGroup(CollectionBase):
             x.set_picture(group[0].picture)
         else:
             x.set_icon(f"mdi:numeric-{len(group)}-box-multiple")
+
+        notes = [c.note for c in group if c.note]
+        if notes:
+            x.set_note("\n".join(notes))
         x["types"] = list(it.type for it in group)
         return x
 

@@ -110,12 +110,13 @@ class WasteCollectionCalendar(CalendarEntity):
         return events
 
     def _convert(self, collection: Collection) -> CalendarEvent:
-        """Convert an collection into a Home Assistant calendar event."""
+        """Convert a collection into a Home Assistant calendar event."""
         return CalendarEvent(
             summary=collection.type,
             start=collection.date,
             end=collection.date + timedelta(days=1),
             uid=uuid.uuid4(),
+            description=collection.note if collection.note else None,
         )
 
 
