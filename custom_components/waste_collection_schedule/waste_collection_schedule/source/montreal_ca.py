@@ -47,7 +47,7 @@ ICON_MAP = {
 WEEKDAYS = {
     "Monday": 0,
     "Tuesday": 1,
-    "Tuesay": 1,
+    "Tuesay": 1,  # typo in dataset
     "Wednesday": 2,
     "Thursday": 3,
     "Friday": 4,
@@ -395,24 +395,6 @@ def _parse_explicit_dates(source_type: str, message: str) -> list[Collection]:
         seen.add(k)
         out.append(e)
 
-    today = date.today()
-
-    # if schedule is fully in the past, roll it forward one year
-    if out and max(e.date for e in out) < today:
-        rolled = []
-        for e in out:
-            try:
-                rolled.append(
-                    Collection(
-                        date=e.date.replace(year=e.date.year + 1),
-                        t=e.type,
-                        icon=e.icon,
-                    )
-                )
-            except ValueError:
-                continue
-        return rolled
-
     return out
 
 
@@ -440,14 +422,8 @@ def _parse_weekly_range(source_type: str, message: str) -> list[Collection]:
     d = start
     while d <= end:
         if d.weekday() == weekday:
-            entries.append(
-                Collection(
-                    date=d,
-                    t=source_type,
-                    icon=ICON_MAP.get(source_type),
-                )
-            )
-        d = d.replace(day=d.day + 1) if d.day < 28 else d + timedelta(days=1)
+            entries.append(...)
+        d += timedelta(days=1)
 
     return entries
 
@@ -487,7 +463,10 @@ def _roll_forward(entries: list[Collection]) -> list[Collection]:
     for e in entries:
         d = e.date
         while d < today:
-            d = date(d.year + 1, d.month, d.day)
+            y = d.year + 1
+            last = monthrange(y, d.month)[1]
+            d = date(y, d.month, min(d.day, last))
+
         out.append(
             Collection(
                 date=d,
@@ -544,7 +523,6 @@ class Source:
         if range_entries:
             return range_entries
 
-        explicit = _parse_explicit_dates(source_type, message)
         if explicit:
             return explicit
 
@@ -562,11 +540,9 @@ class Source:
         year = datetime.now().year
 
         for month in range(1, 13):
-            for day in range(1, 32):
-                try:
-                    d = datetime(year, month, day)
-                except ValueError:
-                    continue
+            last = monthrange(year, month)[1]
+            for day in range(1, last + 1):
+                d = datetime(year, month, day)
 
                 if d.weekday() == weekday:
                     entries.append(
@@ -668,11 +644,17 @@ class Source:
         # green delegates to organic
         if green_delegates_to_organic:
             for e in stream_entries.get("organic", []):
-                organic_notes.setdefault(e.date, getattr(e, "note", None))
+                organic_notes[e.date] = _merge_notes(
+                    organic_notes.get(e.date),
+                    getattr(e, "note", None),
+                )
 
         # explicit organic always wins
         for e in stream_entries.get("organic", []):
-            organic_notes[e.date] = getattr(e, "note", None)
+            organic_notes[e.date] = _merge_notes(
+                organic_notes.get(e.date),
+                getattr(e, "note", None),
+            )
 
         final: list[Collection] = []
 
