@@ -2961,7 +2961,7 @@
       },
       "args_montreal_ca": {
         "title": "Configure Source",
-        "description": "Configure your Montreal waste collection source.\n\nYou must either:\n• Provide latitude and longitude for automatic sector detection\n• Or manually enter sector overrides\n\nIf coordinates are provided, sectors are resolved automatically from official Montreal GIS datasets.",
+        "description": "Configure your Montreal waste collection source.\n\nYou must either:\n• Provide latitude and longitude for automatic sector detection\n• Or manually enter sector overrides\n\nIf latitude/longitude are empty, Home Assistant's location is used. If coordinates are provided, sectors are resolved automatically from official Montreal GIS datasets.",
         "data": {
           "calendar_title": "Calendar title (optional)",
           "latitude": "Latitude (optional, default = Home Assistant location)",
@@ -2972,7 +2972,6 @@
           "green": "Green waste sector (optional override)",
           "bulky": "Bulky items sector (optional override)",
           "organic": "Organic sector (optional override)",
-          "note": "Collection note (optional)",
           "cache_hours": "Cache hours (optional, default 24)"
         },
         "data_description": {
@@ -2985,13 +2984,12 @@
           "green": "Override if different from the waste sector.",
           "bulky": "Override if different from the waste sector.",
           "organic": "Override if different from the waste sector.",
-          "note": "Optional note shown on collection entries.",
           "cache_hours": "Number of hours to cache collection data. Values below 1 hour will be rounded up to 1 hour."
         }
       },
       "reconfigure_montreal_ca": {
         "title": "Reconfigure Source",
-        "description": "Update your Montreal waste collection configuration.\n\nYou must either:\n• Provide latitude and longitude for automatic sector detection\n• Or manually enter sector overrides\n\nIf coordinates are provided, sectors are resolved automatically from official Montreal GIS datasets.",
+        "description": "Update your Montreal waste collection configuration.\n\nYou must either:\n• Provide latitude and longitude for automatic sector detection\n• Or manually enter sector overrides\n\nIf latitude/longitude are empty, Home Assistant's location is used. If coordinates are provided, sectors are resolved automatically from official Montreal GIS datasets.",
         "data": {
           "calendar_title": "Calendar title (optional)",
           "latitude": "Latitude (optional, default = Home Assistant location)",
@@ -3002,7 +3000,6 @@
           "green": "Green waste sector (optional override)",
           "bulky": "Bulky items sector (optional override)",
           "organic": "Organic sector (optional override)",
-          "note": "Collection note (optional)",
           "cache_hours": "Cache hours (optional, default 24)"
         },
         "data_description": {
@@ -3015,7 +3012,6 @@
           "green": "Override if different from the waste sector.",
           "bulky": "Override if different from the waste sector.",
           "organic": "Override if different from the waste sector.",
-          "note": "Optional note shown on collection entries.",
           "cache_hours": "Number of hours to cache collection data. Values below 1 hour will be rounded up to 1 hour."
         }
       },

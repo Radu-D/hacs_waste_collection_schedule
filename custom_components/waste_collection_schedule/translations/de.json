@@ -2925,7 +2925,7 @@
       },
       "args_montreal_ca": {
         "title": "Quelle konfigurieren",
-        "description": "Konfigurieren Sie Ihre Abfallsammlung für Montreal.\n\nSie müssen entweder:\n• Breitengrad und Längengrad für automatische Sektorerkennung angeben\n• Oder Sektor-Überschreibungen manuell eingeben\n\nWenn Koordinaten angegeben werden, werden die Sektoren automatisch aus den offiziellen Montreal-GIS-Datensätzen ermittelt.",
+        "description": "Konfiguriere deine Müllabfuhr für Montreal.\n\nDu musst entweder:\n• Breiten- und Längengrad für die automatische Sektor-Erkennung angeben\n• Oder Sektoren manuell überschreiben\n\nWenn keine Koordinaten angegeben sind, wird der Standort von Home Assistant verwendet. Wenn Koordinaten angegeben werden, werden die Sektoren automatisch anhand der offiziellen GIS-Datensätze der Stadt Montreal bestimmt.",
         "data": {
           "calendar_title": "Kalendertitel (optional)",
           "latitude": "Breitengrad (optional, Standard = Home Assistant Standort)",
@@ -2936,7 +2936,6 @@
           "green": "Grünabfallsektor (optionale Überschreibung)",
           "bulky": "Sperrmüllsektor (optionale Überschreibung)",
           "organic": "Organiksektor (optionale Überschreibung)",
-          "note": "Sammlungsnotiz (optional)",
           "cache_hours": "Cache-Dauer in Stunden (optional, Standard 24)"
         },
         "data_description": {
@@ -2949,13 +2948,12 @@
           "green": "Überschreiben, falls abweichend vom Abfallsektor.",
           "bulky": "Überschreiben, falls abweichend vom Abfallsektor.",
           "organic": "Überschreiben, falls abweichend vom Abfallsektor.",
-          "note": "Optionale Notiz für Sammlungseinträge.",
           "cache_hours": "Anzahl der Stunden, für die die Abholdaten zwischengespeichert werden. Werte unter 1 Stunde werden auf 1 Stunde aufgerundet."
         }
       },
       "reconfigure_montreal_ca": {
         "title": "Quelle neu konfigurieren",
-        "description": "Aktualisieren Sie Ihre Montreal-Abfallsammlungskonfiguration.\n\nSie müssen entweder:\n• Breitengrad und Längengrad angeben\n• Oder Sektor-Überschreibungen manuell eingeben\n\nWenn Koordinaten angegeben werden, werden die Sektoren automatisch aus den offiziellen Montreal-GIS-Datensätzen ermittelt.",
+        "description": "Konfiguriere deine Müllabfuhr für Montreal.\n\nDu musst entweder:\n• Breiten- und Längengrad für die automatische Sektor-Erkennung angeben\n• Oder Sektoren manuell überschreiben\n\nWenn keine Koordinaten angegeben sind, wird der Standort von Home Assistant verwendet. Wenn Koordinaten angegeben werden, werden die Sektoren automatisch anhand der offiziellen GIS-Datensätze der Stadt Montreal bestimmt.",
         "data": {
           "calendar_title": "Kalendertitel (optional)",
           "latitude": "Breitengrad (optional, Standard = Home Assistant Standort)",
@@ -2966,7 +2964,6 @@
           "green": "Grünabfallsektor (optionale Überschreibung)",
           "bulky": "Sperrmüllsektor (optionale Überschreibung)",
           "organic": "Organiksektor (optionale Überschreibung)",
-          "note": "Sammlungsnotiz (optional)",
           "cache_hours": "Cache-Dauer in Stunden (optional, Standard 24)"
         },
         "data_description": {
@@ -2979,7 +2976,6 @@
           "green": "Überschreiben, falls abweichend vom Abfallsektor.",
           "bulky": "Überschreiben, falls abweichend vom Abfallsektor.",
           "organic": "Überschreiben, falls abweichend vom Abfallsektor.",
-          "note": "Optionale Notiz für Sammlungseinträge.",
           "cache_hours": "Anzahl der Stunden, für die die Abholdaten zwischengespeichert werden. Werte unter 1 Stunde werden auf 1 Stunde aufgerundet."
         }
       },

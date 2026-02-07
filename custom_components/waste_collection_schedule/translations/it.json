@@ -2897,7 +2897,7 @@
       },
       "args_montreal_ca": {
         "title": "Configura sorgente",
-        "description": "Configura la sorgente di raccolta rifiuti di Montréal.\n\nDevi scegliere una delle opzioni:\n• Fornire latitudine e longitudine per il rilevamento automatico del settore\n• Oppure inserire manualmente gli override dei settori\n\nSe vengono fornite le coordinate, i settori vengono determinati automaticamente dai dataset GIS ufficiali di Montréal.",
+        "description": "Configura la tua fonte di raccolta rifiuti di Montréal.\n\nDevi scegliere una delle seguenti opzioni:\n• Fornire latitudine e longitudine per il rilevamento automatico del settore\n• Oppure inserire manualmente le sostituzioni dei settori\n\nSe le coordinate non sono specificate, viene utilizzata la posizione di Home Assistant. Se le coordinate vengono fornite, i settori vengono determinati automaticamente utilizzando i dataset GIS ufficiali di Montréal.",
         "data": {
           "calendar_title": "Titolo calendario (opzionale)",
           "latitude": "Latitudine (opzionale, default = posizione Home Assistant)",
@@ -2908,7 +2908,6 @@
           "green": "Settore rifiuti verdi (override opzionale)",
           "bulky": "Settore ingombranti (override opzionale)",
           "organic": "Settore organico (override opzionale)",
-          "note": "Nota raccolta (opzionale)",
           "cache_hours": "Ore di cache (opzionale, default 24)"
         },
         "data_description": {
@@ -2921,13 +2920,12 @@
           "green": "Override se diverso dal settore rifiuti.",
           "bulky": "Override se diverso dal settore rifiuti.",
           "organic": "Override se diverso dal settore rifiuti.",
-          "note": "Nota opzionale mostrata nelle voci di raccolta.",
           "cache_hours": "Numero di ore di cache dei dati di raccolta. I valori inferiori a 1 ora verranno arrotondati a 1 ora."
         }
       },
       "reconfigure_montreal_ca": {
         "title": "Riconfigura sorgente",
-        "description": "Aggiorna la configurazione della raccolta rifiuti di Montréal.\n\nDevi scegliere una delle opzioni:\n• Fornire latitudine e longitudine\n• Oppure inserire manualmente gli override dei settori\n\nSe vengono fornite le coordinate, i settori vengono determinati automaticamente dai dataset GIS ufficiali di Montréal.",
+        "description": "Configura la tua fonte di raccolta rifiuti di Montréal.\n\nDevi scegliere una delle seguenti opzioni:\n• Fornire latitudine e longitudine per il rilevamento automatico del settore\n• Oppure inserire manualmente le sostituzioni dei settori\n\nSe le coordinate non sono specificate, viene utilizzata la posizione di Home Assistant. Se le coordinate vengono fornite, i settori vengono determinati automaticamente utilizzando i dataset GIS ufficiali di Montréal.",
         "data": {
           "calendar_title": "Titolo calendario (opzionale)",
           "latitude": "Latitudine (opzionale, default = posizione Home Assistant)",
@@ -2938,7 +2936,6 @@
           "green": "Settore rifiuti verdi (override opzionale)",
           "bulky": "Settore ingombranti (override opzionale)",
           "organic": "Settore organico (override opzionale)",
-          "note": "Nota raccolta (opzionale)",
           "cache_hours": "Ore di cache (opzionale, default 24)"
         },
         "data_description": {
@@ -2951,7 +2948,6 @@
           "green": "Override se diverso dal settore rifiuti.",
           "bulky": "Override se diverso dal settore rifiuti.",
           "organic": "Override se diverso dal settore rifiuti.",
-          "note": "Nota opzionale mostrata nelle voci di raccolta.",
           "cache_hours": "Numero di ore di cache dei dati di raccolta. I valori inferiori a 1 ora verranno arrotondati a 1 ora."
         }
       },

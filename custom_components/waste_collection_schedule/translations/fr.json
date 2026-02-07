@@ -2897,7 +2897,7 @@
       },
       "args_montreal_ca": {
         "title": "Configurer la source",
-        "description": "Configurez votre source de collecte des déchets de Montréal.\n\nVous devez soit :\n• Fournir latitude et longitude pour la détection automatique du secteur\n• Ou entrer manuellement des remplacements de secteur\n\nSi des coordonnées sont fournies, les secteurs sont déterminés automatiquement à partir des jeux de données GIS officiels de Montréal.",
+        "description": "Configurez votre source de collecte des déchets de Montréal.\n\nVous devez soit :\n• Fournir la latitude et la longitude pour la détection automatique du secteur\n• Ou saisir manuellement des remplacements de secteur\n\nSi aucune coordonnée n’est fournie, l’emplacement de Home Assistant est utilisé. Si des coordonnées sont fournies, les secteurs sont déterminés automatiquement à partir des jeux de données SIG officiels de Montréal.",
         "data": {
           "calendar_title": "Titre du calendrier (optionnel)",
           "latitude": "Latitude (optionnelle, défaut = position Home Assistant)",
@@ -2908,7 +2908,6 @@
           "green": "Secteur résidus verts (remplacement optionnel)",
           "bulky": "Secteur encombrants (remplacement optionnel)",
           "organic": "Secteur organiques (remplacement optionnel)",
-          "note": "Note de collecte (optionnelle)",
           "cache_hours": "Heures de cache (optionnel, défaut 24)"
         },
         "data_description": {
@@ -2921,13 +2920,12 @@
           "green": "Remplacer si différent du secteur déchets.",
           "bulky": "Remplacer si différent du secteur déchets.",
           "organic": "Remplacer si différent du secteur déchets.",
-          "note": "Note optionnelle affichée sur les entrées de collecte.",
           "cache_hours": "Nombre d'heures de mise en cache des données de collecte. Les valeurs inférieures à 1 heure seront arrondies à 1 heure."
         }
       },
       "reconfigure_montreal_ca": {
         "title": "Reconfigurer la source",
-        "description": "Mettez à jour votre configuration de collecte des déchets de Montréal.\n\nVous devez soit :\n• Fournir latitude et longitude\n• Ou entrer manuellement des remplacements de secteur\n\nSi des coordonnées sont fournies, les secteurs sont déterminés automatiquement à partir des jeux de données GIS officiels de Montréal.",
+        "description": "Configurez votre source de collecte des déchets de Montréal.\n\nVous devez soit :\n• Fournir la latitude et la longitude pour la détection automatique du secteur\n• Ou saisir manuellement des remplacements de secteur\n\nSi aucune coordonnée n’est fournie, l’emplacement de Home Assistant est utilisé. Si des coordonnées sont fournies, les secteurs sont déterminés automatiquement à partir des jeux de données SIG officiels de Montréal.",
         "data": {
           "calendar_title": "Titre du calendrier (optionnel)",
           "latitude": "Latitude (optionnelle, défaut = position Home Assistant)",
@@ -2938,7 +2936,6 @@
           "green": "Secteur résidus verts (remplacement optionnel)",
           "bulky": "Secteur encombrants (remplacement optionnel)",
           "organic": "Secteur organiques (remplacement optionnel)",
-          "note": "Note de collecte (optionnelle)",
           "cache_hours": "Heures de cache (optionnel, défaut 24)"
         },
         "data_description": {
@@ -2951,7 +2948,6 @@
           "green": "Remplacer si différent du secteur déchets.",
           "bulky": "Remplacer si différent du secteur déchets.",
           "organic": "Remplacer si différent du secteur déchets.",
-          "note": "Note optionnelle affichée sur les entrées de collecte.",
           "cache_hours": "Nombre d'heures de mise en cache des données de collecte. Les valeurs inférieures à 1 heure seront arrondies à 1 heure."
         }
       },
