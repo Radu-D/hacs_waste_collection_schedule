@@ -1,7 +1,7 @@
 __pycache__
 *.swp
 *.swo
-.vscode/
+.vscode/settings.json
 .mypy_cache/
 venv/
 custom_components/waste_collection_schedule/waste_collection_schedule/test/secrets.yaml
@@ -9,3 +9,9 @@ custom_components/waste_collection_schedule/waste_collection_schedule/test/secre
 .venv/
 .idea/
 .python-version
+.waste_cache/
+hass_config/
+!hass_config/.storage/
+!hass_config/.storage/auth
+!hass_config/.storage/onboarding
+!hass_config/.storage/http

@@ -1,4 +1,3 @@
-// See https://aka.ms/vscode-remote/devcontainer.json for format details.
 {
 	"name": "Waste Collection Schedule development",
 	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
@@ -9,8 +8,10 @@
 		"TZ": "Europe/Berlin" // Set your local timezone here
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/python:1": {}
+		"ghcr.io/devcontainers/features/python:1": {},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
+	"postCreateCommand": "sudo apt-get update && sudo apt-get install -y python3-venv docker-compose && ./.devcontainer/postCreateCommand.sh",
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -23,7 +24,7 @@
 				"files.eol": "\n",
 				"editor.tabSize": 4,
 				"terminal.integrated.shell.linux": "/bin/bash",
-				"python.defaultInterpreterPath": "/usr/bin/python3",
+				"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
 				"python.analysis.autoSearchPaths": false,
 				"python.linting.pylintEnabled": true,
 				"python.linting.enabled": true,

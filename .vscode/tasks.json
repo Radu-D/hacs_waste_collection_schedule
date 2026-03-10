@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Home Assistant on internal port 8123, external port 9123",
+            "type": "shell",
+            "command": ". .venv/bin/activate && cp .devcontainer/configuration.yaml hass_config/configuration.yaml && python -m homeassistant -c hass_config --debug",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Run Home Assistant configuration against /config",
+            "type": "shell",
+            "command": ". .venv/bin/activate && cp .devcontainer/configuration.yaml hass_config/configuration.yaml && python -m homeassistant -c hass_config --script check_config",
+            "problemMatcher": []
+        }
+    ]
+}

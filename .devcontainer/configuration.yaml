@@ -1,3 +1,21 @@
+homeassistant:
+  name: WCS Dev
+  latitude: 45.5017
+  longitude: -73.5673
+  elevation: 30
+  unit_system: metric
+  time_zone: America/Toronto
+  auth_providers:
+    - type: trusted_networks
+      trusted_networks:
+        - 127.0.0.1
+        - ::1
+        - 172.16.0.0/12
+      trusted_users:
+        127.0.0.1: 31c1f8d9a68b4f4090f8193b7db0a3e0
+      allow_bypass_login: true
+    - type: homeassistant
+
 default_config:
 
 logger:
