@@ -22,6 +22,8 @@ TEST_CASES = {
     # "Plateau": {"latitude": 45.5238970487704, "longitude": -73.5720096031592},
     # edge case where there are delegated organic collections and biweekly waste type
     "Hochelaga": {"latitude": 45.552610066853276, "longitude": -73.53401579976021},
+    # edge case using "since" and weekday pattern
+    # "Downtown": {"latitude": 45.5017, "longitude": -73.5673},
 }
 
 CKAN_PACKAGE_URL = "https://donnees.montreal.ca/api/3/action/package_show?id=info-collectes"
@@ -353,6 +355,8 @@ def _parse_explicit_dates(source_type: str, message: str) -> list[Collection]:
     lines = re.split(r"[\n;]", msg)
 
     for line in lines:
+        if re.search(r"\bSince\b", line, re.IGNORECASE):
+            continue
         # if line is just a year → update year context
         y = re.search(r"\b(20\d{2})\b", line)
         if y and not re.search(r"[A-Za-z]", line):
@@ -651,11 +655,7 @@ class Source:
             )
             if note:
                 for e in parsed:
-                    # attach exception text as note metadata
-                    try:
-                        e.note = note
-                    except Exception:
-                        pass
+                    e.set_note(note)
 
             entries.extend(parsed)
 
@@ -730,8 +730,6 @@ class Source:
                 )
             )
 
-        today = date.today()
-        final = [e for e in final if e.date >= today]
         final.sort(key=lambda e: e.date)
 
         return final
